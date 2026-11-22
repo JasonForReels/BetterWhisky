@@ -1,237 +1,148 @@
 <div align="center">
 
-  # BetterWhisky 🥃
-  *Wine but a bit stronger*
+  # BetterWhisky
 
-  > **Active community fork.** The original [whisky-app/whisky](https://github.com/whisky-app/whisky)
-  > was archived on April 9, 2025 with a final maintenance notice. This fork, maintained by
-  > [@frankea](https://github.com/frankea), continues development — addressing the backlog of
-  > upstream issues and adding new functionality. Not affiliated with the original project or
-  > getwhisky.app.
+  **Whisky, with one-click mods.** Install a mod from GitHub, press Play, and BetterWhisky
+  handles the rest: the right download, the install steps, the game version the mod needs,
+  and starting it through Steam so you stay signed in.
 
-  ![](https://img.shields.io/github/actions/workflow/status/frankea/Whisky/CI.yml?style=for-the-badge&label=CI)
-  [![](https://img.shields.io/codecov/c/github/frankea/Whisky?style=for-the-badge&logo=codecov&label=Coverage&flag=whiskykit)](https://codecov.io/gh/frankea/Whisky)
-  [![](https://img.shields.io/github/downloads/frankea/Whisky/total?style=for-the-badge&logo=github&label=Downloads)](https://github.com/frankea/Whisky/releases)
-  [![](https://img.shields.io/github/downloads/frankea/Whisky/latest/total?style=for-the-badge&label=Latest)](https://github.com/frankea/Whisky/releases/latest)
-  [![](https://img.shields.io/github/issues/frankea/Whisky?style=for-the-badge)](https://github.com/frankea/Whisky/issues)
-  [![Documentation](https://img.shields.io/badge/Documentation-DocC-blue?style=for-the-badge)](https://frankea.github.io/Whisky/documentation/whiskykit/)
+  A fork of [frankea/Whisky](https://github.com/frankea/Whisky), the community continuation of
+  [Whisky](https://github.com/whisky-app/whisky). Not affiliated with either project.
+
 </div>
 
-## Overview
+<img alt="BetterWhisky Library with Among Us, Town of Us: Mira and Steam" src="./images/screenshots/library.png">
 
-Whisky provides a clean and easy-to-use graphical wrapper for Wine built in native SwiftUI. You can make and manage bottles, install and run Windows apps and games, and unlock the full potential of your Mac with no technical knowledge required.
+*The regular game and each modded version get their own card. Hover a card for Play and mod settings.*
 
-<img width="650" alt="Whisky in action" src="./images/demo.gif">
+## What BetterWhisky adds
 
-<img width="650" alt="Config" src="./images/config-screenshot.png">
+- **Mods from GitHub in one click.** Built-in presets (Town of Us: Mira and The Other Roles for
+  Among Us), or paste any GitHub repo. BetterWhisky takes the **latest release**, reads the
+  install steps from its **release notes and README**, and shows you the plan before it
+  changes anything. Dropping a `.zip` or `.dll` works too.
+- **Dependencies installed for you.** Other mods a README says it needs (Reactor, MiraAPI, …)
+  come from their own latest releases; Windows runtimes (Visual C++, .NET, XNA) go in through
+  winetricks.
+- **Each mod keeps the game version it was made for.** A mod installs into its own copy of the
+  game (an instant APFS clone, so no extra space until Steam changes the original). When Steam
+  updates the game, the regular card plays the new version and the modded card keeps working on
+  the old one until the mod catches up.
+- **Plays through Steam, so you stay signed in.** Games like Among Us only sign you in when Steam
+  starts them. BetterWhisky sets Steam up once, then Steam starts whichever version you picked.
+- **Mods update themselves.** BetterWhisky checks for new releases. When one supports the
+  current game, it downloads it and moves the mod onto the new game; until then it leaves it be.
+  A release made for a different game version is refused with a clear reason.
+- **Faster modded starts.** Steam starts in the background when BetterWhisky opens, and mod
+  code is pre-compiled on your Mac with Microsoft's crossgen2. Together they took a modded
+  Among Us start from about 3½ minutes to under 2.
+- **A loading screen that tells the truth.** Each stage is read from the log it writes:
+  Steam signing in, Steam starting the game, the mod loading (with a plugin count), the game
+  opening.
 
-*Familiar UI that integrates seamlessly with macOS*
+<p>
+  <img width="420" alt="Mod settings: Town of Us on, The Other Roles available, Reduce memory use" src="./images/screenshots/mod-settings.png">
+  &nbsp;
+  <img width="420" alt="Loading screen for Among Us with Town of Us: Mira" src="./images/screenshots/loading.png">
+</p>
 
-<div align="right">
-  <img width="650" alt="New Bottle" src="./images/new-bottle-screenshot.png">
+*Left: mod settings for a game. Right: a modded start, stage by stage.*
 
-  *One-click bottle creation and management*
-</div>
+## How a modded start works
 
-<img width="650" alt="debug" src="./images/debug-screenshot.png">
-
-*Debug and profile with ease*
-
----
-
-## Key Features
-
-- **Wine 11.19 engine** - Built from CrossOver's sources. Import Apple's Game Porting Toolkit in **Settings → Game Porting Toolkit** and Whisky deploys D3DMetal for DirectX 12 games
-- **Game library** - Your Steam games and pinned programs on one page, with launch links (`whisky://launch?steam=<appid>`) and Dock menu shortcuts
-- **Command line tool** - Install `whisky` from the Whisky menu (**Install Whisky CLI...**) to create bottles, run programs and launch Steam games from Terminal
-- **DXMT & DXVK Graphics** - DirectX 11 through native Metal translation (DXMT) out of the box, with DXVK over MoltenVK as the universal fallback
-- **Launcher Compatibility** - Built-in support for Steam, Epic, EA App, Rockstar, Battle.net, and more
-- **Controller Support** - SDL environment variable controls for gamepad detection and mapping issues
-- **Stability Diagnostics** - One-click diagnostic reports for troubleshooting crashes and freezes
-- **Native SwiftUI** - Beautiful, familiar macOS interface
-
-## System Requirements
-
-- **CPU**: Apple Silicon (any M-series chip, or the A18 Pro in MacBook Neo)
-- **OS**: macOS Sequoia 15.0 or later
-- **Rosetta 2**: installed automatically during first-run setup
-- **Disk**: about 1.5 GB for the Wine engine (a ~480 MB download), plus your bottles
-
-## Installation
-
-### Homebrew (recommended)
-
-```sh
-brew install --cask frankea/whisky/whisky
+```text
+Play  →  Steam (already running)  →  launch script picks the version  →  BepInEx loads the mod  →  game
 ```
 
-This taps [frankea/homebrew-whisky](https://github.com/frankea/homebrew-whisky) and installs the latest signed/notarized DMG. `brew upgrade --cask` picks up new releases.
+1. The mod lives in `steamapps/common/<Game> Mods/<Mod>/game`, a frozen copy of the game with
+   the mod installed into it.
+2. Steam's launch option for the game is set once to a small BetterWhisky script. The script
+   starts the modded copy when a mod is selected, and the game Steam installed when not.
+3. BepInEx needs Wine to use the mod's `winhttp.dll`; BetterWhisky sets that on the game so
+   Steam launches carry it.
 
-> The default `brew install --cask whisky` still installs the **archived original** (last release April 2025) and always will until that cask is updated. Use the qualified `frankea/whisky/whisky` form to get this fork.
+## Memory
 
-### Manual
+Measured with Town of Us: Mira at the Among Us menu on an 8 GB Mac:
 
-1. Download the latest **[Whisky-X.Y.Z.dmg](https://github.com/frankea/Whisky/releases/latest)** (signed and notarized — Gatekeeper-approved).
-2. Open the DMG and drag **Whisky.app** to **/Applications**.
-3. Launch Whisky. On first run it installs Rosetta 2 if needed and downloads the Wine runtime (~480 MB). Then click **Create Bottle** to make your first bottle.
+| | Memory |
+| --- | --- |
+| Modded Among Us | ~2.0 GB |
+| Steam's built-in browser (runs even when Steam is hidden) | ~2.2–2.4 GB |
+| Steam client, helpers and Wine | ~0.5 GB |
+| **Total** | **~4.9 GB** |
 
-In-app updates are delivered through Sparkle from `https://frankea.github.io/Whisky/appcast.xml`.
+The mod's .NET runtime runs in conserve-memory mode (on by default, under **Reduce memory use**
+in a game's mod settings). BetterWhisky never pauses or closes Wine or Steam processes to save
+memory: it saves little and makes games crash.
 
-### Migrating from the original Whisky
+## Requirements
 
-The original [whisky-app/whisky](https://github.com/whisky-app/whisky) was archived on **April 9, 2025** with a final maintenance notice. If you're running it today, you're on a stale build with no path forward for new fixes. This fork picks up where the upstream left off — version `3.0.1` shipped 54 requirements covering the 10 categories of upstream issue tracking (#40–#50).
+- Apple Silicon Mac, macOS Sequoia 15.0 or later
+- Rosetta 2 (installed during first-run setup)
+- About 1.5 GB for the Wine engine, plus your bottles and games
 
-To switch:
+## Building
 
-1. Install this fork: `brew install --cask frankea/whisky/whisky` or follow the manual steps above.
-2. Open it. The first time Whisky finds bottles in `~/Library/Containers/com.isaacmarovitz.Whisky/` that it hasn't imported yet, it offers to import them, and you can do it any time with **File → Migrate from the Original Whisky…**. Pick the bottles you want. Bottles are referenced **in place** (nothing is moved or copied), so the original app keeps working if you'd like to keep it around.
-3. *(Optional)* Once you're happy, remove the original app: drag **/Applications/Whisky.app** to the Trash, or `brew uninstall --cask whisky` if you installed it via Homebrew. Your bottles stay put.
+BetterWhisky has no signed releases yet. Build it with Xcode:
 
-The original app uses a different bundle identifier (`com.franke.Whisky` here vs. `com.isaacmarovitz.Whisky`), which is why bottles aren't shared automatically. You can also move bottles by hand or onto another Mac: right-click a bottle in the sidebar and choose **Export as Archive...**, unpack the archive on the other Mac, then add the folder with **File → Import Bottle**. If you have no bottles worth keeping, you can skip migration entirely and create a new bottle in this app.
+```sh
+git clone https://github.com/JasonForReels/BetterWhisky.git
+cd BetterWhisky
+brew install swiftlint
+xcodebuild -project Whisky.xcodeproj -scheme Whisky -configuration Release build
+```
+
+On first launch it downloads the Wine runtime (about 480 MB). BetterWhisky uses its own app ID
+(`com.thejaysmith.BetterWhisky`), so it runs beside Whisky without sharing bottles; use
+**File → Import Bottle** to bring one over.
+
+## Known issues
+
+- **In-app updates point at frankea/Whisky.** The updater feed hasn't been changed yet, so an
+  offered update would install frankea's Whisky, not BetterWhisky. Don't accept updates for now.
+- **Telemetry** is off unless you opt in during setup; if you do, events go to the upstream
+  project's analytics.
+- The Library needs a manual refresh after installing a mod.
+- Steam's window can draw blank under the current Wine runtime on macOS 27
+  ([frankea/Whisky#248](https://github.com/frankea/Whisky/issues/248)); waiting usually helps.
+- Mods are tested with Among Us (Town of Us: Mira). Other games and mod loaders may need presets.
 
 ## Uninstalling
 
-Dragging **Whisky.app** to the Trash (or `brew uninstall --cask frankea/whisky/whisky`) removes the app but leaves the Wine runtime, your bottles, and app data behind, by design, so reinstalling doesn't re-download the ~480 MB runtime or lose your bottles.
-
-> ⚠️ **Back up your bottles first if you want to keep them.** Removing the container below deletes every bottle stored in its default location. Bottles you created in a custom folder live wherever you put them: right-click each bottle in the sidebar and choose **Show in Finder** before deleting anything.
-
-To remove Whisky **completely**, delete the app and then these paths (all under `~/Library`):
+Back up any bottles you want first. Then remove the app and its data:
 
 ```sh
-# 1. The app itself
-rm -rf "/Applications/Whisky.app"          # or: brew uninstall --cask frankea/whisky/whisky
-
-# 2. Bottles + bottle list (default bottle location is inside this container)
-rm -rf ~/Library/Containers/com.franke.Whisky
-rm -rf ~/Library/Containers/com.franke.Whisky.WhiskyThumbnail
-
-# 3. The Wine runtime (about 1.5 GB), an imported Game Porting Toolkit, and other app support
-rm -rf ~/Library/Application\ Support/com.franke.Whisky
-
-# 4. Caches, logs, preferences, and saved state
-rm -rf ~/Library/Caches/com.franke.Whisky
-rm -rf ~/Library/Logs/com.franke.Whisky
-rm -rf ~/Library/HTTPStorages/com.franke.Whisky
-rm -f  ~/Library/Preferences/com.franke.Whisky.plist
-
-# 5. The command line tool, if you installed it from the Whisky menu
-sudo rm -f /usr/local/bin/whisky
+rm -rf ~/Library/Containers/com.thejaysmith.BetterWhisky
+rm -rf ~/Library/Containers/com.thejaysmith.BetterWhisky.WhiskyThumbnail
+rm -rf ~/Library/Application\ Support/com.thejaysmith.BetterWhisky
+rm -rf ~/Library/Caches/com.thejaysmith.BetterWhisky
+rm -rf ~/Library/Logs/com.thejaysmith.BetterWhisky
+rm -f  ~/Library/Preferences/com.thejaysmith.BetterWhisky.plist
 ```
 
-If you installed with Homebrew, `brew uninstall --zap --cask frankea/whisky/whisky` removes the app and most of these folders, including the default bottle location, so back up bottles first.
+## Everything else from Whisky
 
-If you also installed bottles in a **custom location**, delete those folders too. Migrated bottles that still belong to the original app live under `~/Library/Containers/com.isaacmarovitz.Whisky` and are left untouched by the steps above.
+BetterWhisky keeps all of frankea/Whisky: the Wine 11.19 engine built from CrossOver's sources,
+DXMT and DXVK graphics, Game Porting Toolkit support, the game library, launcher compatibility
+(Steam, Epic, EA App, Rockstar, Battle.net), the `whisky` command line tool, controller options
+and stability diagnostics. Its guides still apply:
+[Steam](docs/SteamCompatibility.md), [launchers](docs/LauncherTroubleshooting.md),
+[stability](docs/StabilityTroubleshooting.md), [runtime dependencies](docs/DEPENDENCIES.md).
 
-## Telemetry (opt-in)
+## Credits
 
-Whisky sends **no data by default**. During first-run setup you can opt in to
-anonymous usage telemetry — a checkbox that is **off** unless you tick it, and a
-toggle you can change anytime in **Settings → Privacy**.
+BetterWhisky is built on [frankea/Whisky](https://github.com/frankea/Whisky) by
+[@frankea](https://github.com/frankea), which continues [Whisky](https://github.com/whisky-app/whisky)
+by [Isaac Marovitz](https://github.com/IsaacMarovitz). It also relies on:
 
-When (and only when) enabled, Whisky sends five events covering the first-run
-funnel, so the maintainer can see where new installs fail:
-
-| Event | Properties |
-| --- | --- |
-| `runtime_install_started` | — |
-| `runtime_install_succeeded` | — |
-| `runtime_install_failed` | `reason`: one of `download_failed`, `verify_failed`, `tarball_missing`, `extract_failed`, `runtime_incomplete`, `network_blocked` |
-| `first_bottle_created` | — |
-| `first_program_launch_attempted` | — |
-
-`runtime_install_started` is sent once per setup attempt; the `_succeeded` /
-`_failed` events are sent per install attempt (so retries are counted). The two
-`first_…` events are sent at most once per install.
-
-No personal data, file names, paths, raw error text, or identifiers tied to you
-are ever sent. Events carry a random per-install anonymous ID (reset if you opt
-out). Every event Whisky can send is the list above, and all of it is declared in
-one file, [`Whisky/Utils/Telemetry.swift`](Whisky/Utils/Telemetry.swift), with
-every automatic-capture feature of the analytics SDK disabled and no person
-profile ever created (`identify()` is never called). Each event also carries the
-SDK's standard context — app and macOS version, hardware model, locale, and more;
-see [SECURITY.md](SECURITY.md) for the full list. Like any HTTPS request,
-PostHog's ingestion sees the connecting IP (GeoIP enrichment is disabled); none
-of this is tied to your identity.
-
-## Translations
-
-Whisky is translated into 22 languages, and translations are managed on Crowdin.
-To help translate, or to fix a translation you've spotted, join the
-[Whisky Crowdin project](https://crowdin.com/project/frankea-whisky). If Crowdin
-asks you to join, use the access request prompt on the project page. New and
-updated translations sync into the app automatically, so please contribute
-there rather than by opening a pull request; see
-[CONTRIBUTING.md](CONTRIBUTING.md#localization) for how strings get from the
-code to Crowdin and back.
-
-## Documentation
-
-- **[Support](docs/SUPPORT.md)** - Where to file bugs and what to expect from a single-maintainer fork
-- **[Governance & continuity](docs/GOVERNANCE.md)** - Who maintains this and the honest bus-factor situation
-- **[Runtime dependencies](docs/DEPENDENCIES.md)** - The bundled Wine/DXVK/D3DMetal/DXMT versions and their upstream sources
-
-WhiskyKit, the core framework powering Whisky, has comprehensive API documentation:
-
-- **[WhiskyKit API Documentation](https://frankea.github.io/Whisky/documentation/whiskykit/)** - Full API reference with usage examples
-- **[Getting Started Guide](https://frankea.github.io/Whisky/documentation/whiskykit/gettingstarted)** - Learn how to integrate WhiskyKit
-- **[Architecture Overview](https://frankea.github.io/Whisky/documentation/whiskykit/architectureoverview)** - Understand how WhiskyKit components work together
-
-### Troubleshooting
-
-- **[Launcher Troubleshooting](docs/LauncherTroubleshooting.md)** - Fix issues with Steam, Epic, Battle.net, etc.
-- **[Steam Compatibility Guide](docs/SteamCompatibility.md)** - Detailed guide for Steam on Whisky
-- **[Stability Troubleshooting](docs/StabilityTroubleshooting.md)** - Diagnose crashes, freezes, reboots, and kernel panics
-- **Controller Issues** - Enable "Controller Compatibility Mode" in Bottle Config → Controller & Input
-- **[Game Configurations](https://github.com/frankea/Whisky/blob/main/WhiskyKit/Sources/WhiskyKit/GameDatabase/Resources/GameDB.json)** - 80+ curated per-game compatibility configs, also browsable in-app under Game Configurations
-
-### Upstream issue audit
-
-Per-issue accounting of how this fork addresses the open issues from the
-archived upstream repo. Read [docs/AUDIT.md](docs/AUDIT.md) for the
-methodology — including how to read the `addressed-direct` vs
-`addressed-categorical` distinction and what `unverified` GameDB entries
-actually mean.
-
-### Test coverage
-
-The Coverage badge above is scoped to the **`whiskykit` flag** — line
-coverage of the framework that holds the bottle, Wine, GameDB, and
-PE-parser logic, measured by `swift test --enable-code-coverage` per
-[`.github/workflows/CI.yml`](.github/workflows/CI.yml). The blended
-project-wide number on the [Codecov dashboard](https://codecov.io/gh/frankea/Whisky)
-reads much lower because it averages in the SwiftUI app target, which
-only receives best-effort UI-test coverage. Read the badge as
-"WhiskyKit unit-test coverage," not full-app coverage.
-
-WhiskyUITests gives behavioural coverage of the SwiftUI surface (toolbar,
-create-bottle sheet, fixture-dependent flows). CI now runs them with
-`-enableCodeCoverage YES` and uploads the resulting app-target coverage to
-Codecov under a separate `whiskyapp` flag (best-effort — the upload never gates
-CI). Because UI tests exercise far less of the app than the unit tests do of
-WhiskyKit, expect the app-target number to read lower than the WhiskyKit badge
-above.
-
----
-
-## Credits & Acknowledgments
-
-Whisky is possible thanks to the magic of several projects:
-
-- [winecx-gptk](https://github.com/dappermint/winecx-gptk) by dappermint (the Wine 11.19 engine, including its msync)
-- [msync](https://github.com/marzent/wine-msync) by marzent (the original msync for macOS Wine)
-- [DXVK-macOS](https://github.com/Gcenx/DXVK-macOS) by Gcenx and doitsujin
-- [DXMT](https://github.com/3Shain/dxmt) by 3Shain
-- [MoltenVK](https://github.com/KhronosGroup/MoltenVK) by KhronosGroup
-- [Sparkle](https://github.com/sparkle-project/Sparkle) by sparkle-project
-- [SemanticVersion](https://github.com/SwiftPackageIndex/SemanticVersion) by SwiftPackageIndex
-- [swift-argument-parser](https://github.com/apple/swift-argument-parser) by Apple
-- [CrossOver](https://www.codeweavers.com/crossover) by CodeWeavers and WineHQ
-- D3DMetal by Apple
-
-Special thanks to Gcenx, ohaiibuzzle, Nat Brown, and [Isaac Marovitz](https://github.com/IsaacMarovitz) (original author) for their support and contributions!
-
----
+- [winecx-gptk](https://github.com/dappermint/winecx-gptk) by dappermint, and [msync](https://github.com/marzent/wine-msync) by marzent
+- [DXVK-macOS](https://github.com/Gcenx/DXVK-macOS), [DXMT](https://github.com/3Shain/dxmt) and [MoltenVK](https://github.com/KhronosGroup/MoltenVK)
+- [BepInEx](https://github.com/BepInEx/BepInEx), which the Among Us mods use to load
+- [crossgen2](https://github.com/dotnet/runtime) from .NET, for pre-compiling mods
+- Mods: [Town of Us: Mira](https://github.com/AU-Avengers/TOU-Mira) by AU-Avengers and
+  [The Other Roles](https://github.com/TheOtherRolesAU/TheOtherRoles) by TheOtherRolesAU
+- [CrossOver](https://www.codeweavers.com/crossover) by CodeWeavers and WineHQ, and D3DMetal by Apple
 
 <table>
   <tr>
@@ -242,7 +153,9 @@ Special thanks to Gcenx, ohaiibuzzle, Nat Brown, and [Isaac Marovitz](https://gi
         </picture>
     </td>
     <td>
-        Whisky doesn't exist without CrossOver. If you want a fully-supported commercial Wine experience on macOS, check out <a href="https://www.codeweavers.com/crossover">CrossOver</a> from CodeWeavers. (This fork has no affiliate arrangement and receives nothing from CrossOver sales.)
+        Whisky doesn't exist without CrossOver. If you want a fully-supported commercial Wine experience on macOS, check out <a href="https://www.codeweavers.com/crossover">CrossOver</a> from CodeWeavers.
     </td>
   </tr>
 </table>
+
+Licensed under the [GNU General Public License v3](LICENSE).
