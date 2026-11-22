@@ -145,12 +145,6 @@ struct LibraryCard: View {
             RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                 .strokeBorder(.primary.opacity(isActive ? 0.2 : 0.08), lineWidth: 1)
         }
-        .overlay {
-            if isFocused {
-                RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-                    .strokeBorder(Color.accentColor, lineWidth: 3)
-            }
-        }
     }
 
     /// A game with a logo: the logo alone, centred on a quiet surface.
@@ -158,28 +152,14 @@ struct LibraryCard: View {
         ZStack {
             RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                 .fill(.quaternary.opacity(isActive ? 1 : 0.7))
+            // On hover the logo comes forward, lifted off the card by its shadow.
             logo
                 .padding(.horizontal, 44)
                 .padding(.vertical, 28)
+                .scaleEffect(isActive ? 1.1 : 1)
+                .shadow(color: .black.opacity(isActive ? 0.45 : 0), radius: isActive ? 10 : 0, y: isActive ? 6 : 0)
+                .animation(.easeOut(duration: 0.18), value: isActive)
         }
-        .overlay(alignment: .bottom) {
-            // The name, on hover: the logo says what it is, this says it in words.
-            if isActive {
-                Text(hoverTitle)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
-                    .transition(.opacity)
-            }
-        }
-        .help(hoverTitle)
-    }
-
-    /// "Among Us", "Town of Us: Mira", "Steam".
-    private var hoverTitle: String {
-        item.mod?.modName ?? title
     }
 
     private var artCard: some View {
