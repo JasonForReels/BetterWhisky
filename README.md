@@ -99,8 +99,10 @@ On first launch it downloads the Wine runtime (about 480 MB). BetterWhisky uses 
 
 ## Known issues
 
-- **In-app updates point at frankea/Whisky.** The updater feed hasn't been changed yet, so an
-  offered update would install frankea's Whisky, not BetterWhisky. Don't accept updates for now.
+- **In-app updates** check BetterWhisky's own feed ([`appcast.xml`](appcast.xml)), which has no
+  releases yet, so the app always reports it is up to date. Before the first release, the
+  update-signing key in `Whisky/Info.plist` (`SUPublicEDKey`) has to be replaced with
+  BetterWhisky's own.
 - **Telemetry** is off unless you opt in during setup; if you do, events go to the upstream
   project's analytics.
 - The Library needs a manual refresh after installing a mod.

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BetterWhisky's update feed, read by the in-app updater (Sparkle).
+  No releases yet, so it has no items and the app reports it is up to date.
+  Each release adds an <item> signed with BetterWhisky's EdDSA key; replace
+  SUPublicEDKey in Whisky/Info.plist with that key's public half first.
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>BetterWhisky</title>
+    <link>https://github.com/JasonForReels/BetterWhisky</link>
+    <description>BetterWhisky releases</description>
+    <language>en</language>
+  </channel>
+</rss>
