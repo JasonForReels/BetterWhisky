@@ -162,6 +162,24 @@ struct LibraryCard: View {
                 .padding(.horizontal, 44)
                 .padding(.vertical, 28)
         }
+        .overlay(alignment: .bottom) {
+            // The name, on hover: the logo says what it is, this says it in words.
+            if isActive {
+                Text(hoverTitle)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
+            }
+        }
+        .help(hoverTitle)
+    }
+
+    /// "Among Us", "Town of Us: Mira", "Steam".
+    private var hoverTitle: String {
+        item.mod?.modName ?? title
     }
 
     private var artCard: some View {
