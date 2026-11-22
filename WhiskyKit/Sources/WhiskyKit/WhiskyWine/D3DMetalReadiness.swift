@@ -105,5 +105,5 @@ public enum D3DMetalReadiness: Equatable, Sendable, CaseIterable {
     /// Where the engines are published, for installing a GPTK-capable one by
     /// hand when the installed engine can't run D3DMetal and the launch-time
     /// update hasn't replaced it.
-    public static let engineReleasesURL = URL(string: DistributionConfig.releasesPageURL)
+    public static let engineReleasesURL = URL(string: DistributionConfig.engineReleasesPageURL)
 }

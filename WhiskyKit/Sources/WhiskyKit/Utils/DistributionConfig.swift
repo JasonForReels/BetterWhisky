@@ -19,7 +19,17 @@
 import Foundation
 
 public enum DistributionConfig {
-    /// Base URL for GitHub Pages distribution
+    /// BetterWhisky's home: the Help menu's links and where releases are published.
+    public static let siteURL = "https://github.com/JasonForReels/BetterWhisky"
+
+    /// Where people report problems.
+    public static let issuesURL = "\(siteURL)/issues"
+
+    /// Base URL for the Wine engine feeds.
+    ///
+    /// BetterWhisky uses the Wine engine frankea/Whisky builds and hosts, so
+    /// engine downloads stay there; only the app itself is released from
+    /// BetterWhisky's repository.
     public static let baseURL = "https://frankea.github.io/Whisky"
 
     /// URL for the WhiskyWine version plist file, which names the engine to
@@ -35,15 +45,17 @@ public enum DistributionConfig {
     /// The feed apps before 3.10.0 read, frozen on the stock 3.1.1 engine.
     static let legacyVersionPlistURL = "\(baseURL)/WhiskyWineVersion.plist"
 
-    /// The GitHub Releases page, which lists app releases and the Wine
-    /// Libraries engine builds.
-    public static let releasesPageURL = "https://github.com/frankea/Whisky/releases"
+    /// BetterWhisky's releases page, which lists app releases.
+    public static let releasesPageURL = "\(siteURL)/releases"
 
-    /// Base URL for GitHub Releases downloads
-    public static let releasesBaseURL = "\(releasesPageURL)/download"
+    /// The releases page for the Wine engine builds BetterWhisky installs.
+    public static let engineReleasesPageURL = "https://github.com/frankea/Whisky/releases"
 
-    /// URL for the Sparkle appcast feed
-    public static let appcastURL = "\(baseURL)/appcast.xml"
+    /// Base URL for Wine engine downloads.
+    public static let releasesBaseURL = "\(engineReleasesPageURL)/download"
+
+    /// The in-app updater's feed (also set as SUFeedURL in Info.plist).
+    public static let appcastURL = "https://raw.githubusercontent.com/JasonForReels/BetterWhisky/main/appcast.xml"
 
     /// Constructs the download URL for Wine Libraries from GitHub Releases
     /// - Parameter version: The version string (e.g., "2.5.0")
