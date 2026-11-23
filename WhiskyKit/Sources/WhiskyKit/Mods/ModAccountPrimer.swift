@@ -48,14 +48,46 @@ public struct ModAccountSave: Codable, Hashable, Sendable {
     }
 }
 
+/// The one-time account setup before a mod's first launch, while it runs,
+/// so the app can show a loading screen instead of seeming stuck.
+@MainActor
+public final class ModFirstLaunch: ObservableObject {
+    public static let shared = ModFirstLaunch()
+    /// The mod being set up, or nil when nothing is.
+    @Published public private(set) var modName: String?
+    /// When the setup began, for the progress estimate.
+    @Published public private(set) var startedAt: Date?
+    /// What the person should know or do right now.
+    @Published public private(set) var detail = "Getting things ready for the first start. This only happens once."
+    /// Whether the person has something to do (the game is waiting on them).
+    @Published public private(set) var needsPerson = false
+
+    func begin(_ name: String) {
+        modName = name
+        startedAt = Date()
+    }
+
+    func waitForPerson(_ text: String) {
+        detail = text
+        needsPerson = true
+    }
+
+    func end() {
+        modName = nil
+        startedAt = nil
+        needsPerson = false
+        detail = "Getting things ready for the first start. This only happens once."
+    }
+}
+
 /// Gives a mod a signed-in account save before its launch.
 ///
 /// When the plain game has signed in in the bottle, its save files are
 /// copied to the mod's names: no game runs. Only when it never has, the
-/// plain game is run once in Unity's headless mode (`-batchmode
-/// -nographics`: no window, no sound) until it has saved a signed-in
-/// account, then closed. The sign-in itself, with its age check, is the
-/// game's own, done with Innersloth's servers; nothing here fakes it.
+/// plain game is opened once so the person can confirm their age: its very
+/// first sign-in waits for that (`CoWaitForDateConfirmation`), so it can't
+/// be done hidden, and nothing here answers it for them. As soon as the
+/// save says signed in, the plain game is closed and the mod's copy made.
 public enum ModAccountPrimer {
     /// The game's save folder in the bottle's Windows user profile.
     static func saveFolder(_ save: ModAccountSave, bottleURL: URL) -> URL? {
@@ -99,22 +131,28 @@ public enum ModAccountPrimer {
     }
 
     /// Makes sure the mod named `modName` has a signed-in save before it
-    /// starts. Does nothing for mods that don't need one.
+    /// starts, opening the plain game for its one-time sign-in if needed.
+    /// Does nothing for mods that don't need one. Shows ``ModFirstLaunch``
+    /// while it works.
     /// - Returns: Whether the mod's save is ready.
     @MainActor
     @discardableResult
     public static func prepare(
-        appId: Int, gameFolder: URL, modName: String?, bottle: Bottle, timeout: Duration = .seconds(150)
+        appId: Int, gameFolder: URL, modName: String?, bottle: Bottle, timeout: Duration = .seconds(600)
     ) async -> Bool {
         guard let save = ModPreset.named(modName)?.accountSave else { return true }
         guard let folder = saveFolder(save, bottleURL: bottle.url) else { return false }
         if !plainSaveReady(save, in: folder) {
-            await signInHidden(appId: appId, gameFolder: gameFolder, bottle: bottle) {
+            ModFirstLaunch.shared.begin(modName ?? "the mod")
+            defer { ModFirstLaunch.shared.end() }
+            // Closed as soon as the save says signed in; Town of Us may
+            // still ask for the birthday itself, which is fine.
+            await signInPlain(appId: appId, gameFolder: gameFolder, bottle: bottle, timeout: timeout) {
                 plainSaveReady(save, in: folder)
             }
         }
         guard plainSaveReady(save, in: folder) else {
-            logger.info("The plain game has no signed-in save for \(appId); starting the mod anyway")
+            logger.info("The plain game has no signed-in save for \(appId)")
             return false
         }
         do {
@@ -126,35 +164,33 @@ public enum ModAccountPrimer {
         }
     }
 
-    /// Where the hidden run writes its log: headless Unity needs one.
-    static func logURL(appId: Int, bottleURL: URL) -> URL {
-        SteamModLauncher.folder(bottleURL).appending(path: "account-primer-\(appId).log")
+    /// Whether the mod already has a signed-in save, or needs none.
+    public static func isReady(modName: String?, bottleURL: URL) -> Bool {
+        guard let save = ModPreset.named(modName)?.accountSave else { return true }
+        guard let folder = saveFolder(save, bottleURL: bottleURL), let account = save.files.first else { return false }
+        return isSignedIn(folder.appending(path: account + save.suffix))
     }
 
-    /// Runs the plain game unseen until `isDone`, then closes it.
+    /// Opens the plain game for its first sign-in and closes it once
+    /// `isDone` (its save says signed in), or after `timeout`.
     @MainActor
-    static func signInHidden(
-        appId: Int, gameFolder: URL, bottle: Bottle, timeout: Duration = .seconds(150),
+    static func signInPlain(
+        appId: Int, gameFolder: URL, bottle: Bottle, timeout: Duration,
         isDone: @escaping @Sendable () -> Bool
     ) async {
         guard let exe = ModInstaller.mainExecutable(in: gameFolder) else { return }
-        // The sign-in goes through the Steam client: start it hidden and give
-        // it time to sign in if a launch option change just closed it.
+        // The sign-in goes through this bottle's Steam client.
         await SteamInstallService.startClientForSignIn(bottle: bottle)
-        for _ in 0 ..< 45 where await !SteamModLauncher.isSteamRunning() {
+        for _ in 0 ..< 45 where await !SteamLauncher.isClientRunning(
+            bottle: bottle, hostSteamPIDs: SteamLauncher.hostSteamPIDs()
+        ) {
             try? await Task.sleep(for: .seconds(2))
         }
         try? await Task.sleep(for: .seconds(10))
-        let log = logURL(appId: appId, bottleURL: bottle.url)
-        try? FileManager.default.createDirectory(
-            at: log.deletingLastPathComponent(), withIntermediateDirectories: true
-        )
-        logger.info("Signing in the plain game once, unseen, before the first modded launch of \(appId)")
+        logger.info("Opening the plain game once for its first sign-in (\(appId))")
         do {
             try await Wine.runProgram(
-                at: exe,
-                args: ["-batchmode", "-nographics", "-logFile", #"C:\BetterWhisky\"# + log.lastPathComponent],
-                bottle: bottle,
+                at: exe, args: [], bottle: bottle,
                 // Lets the Steam API start from a direct launch, through the
                 // client that is already running.
                 environment: ["SteamAppId": String(appId), "SteamGameId": String(appId)]
@@ -163,9 +199,13 @@ public enum ModAccountPrimer {
             logger.error("Couldn't start the plain game: \(error.localizedDescription)")
             return
         }
+        ModFirstLaunch.shared.waitForPerson(
+            "Among Us is open to connect your account. Confirm your age there; "
+                + "BetterWhisky closes it by itself as soon as you're signed in. This only happens once."
+        )
         let deadline = ContinuousClock.now.advanced(by: timeout)
         while ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(2))
             if await Task.detached(operation: isDone).value { break }
         }
         // Give it a moment to finish writing, then close it, so the mod is

@@ -171,7 +171,7 @@ public extension ModPreset {
     ]
 
     /// The built-in preset with this name, if any.
-    static func named(_ name: String?) -> ModPreset? {
+    public static func named(_ name: String?) -> ModPreset? {
         builtIn.first { $0.name == name }
     }
 
