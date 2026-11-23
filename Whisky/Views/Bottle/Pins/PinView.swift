@@ -32,37 +32,31 @@ struct PinView: View {
     @State private var opening: Bool = false
 
     var body: some View {
-        VStack {
+        // A row in the bottle's Pinned section, laid out like a Settings row:
+        // icon, name, and the action at the trailing edge.
+        HStack(spacing: 12) {
             Group {
                 if let image {
-                    image
-                        .resizable()
+                    image.resizable()
                 } else {
-                    Image(systemName: "app.dashed")
-                        .resizable()
+                    Image(systemName: "app.dashed").resizable().foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 45, height: 45)
-            .scaleEffect(opening ? 2 : 1)
-            .opacity(opening ? 0 : 1)
-            Spacer()
+            .frame(width: 24, height: 24)
             Text(name)
-                .multilineTextAlignment(.center)
-                .lineLimit(2, reservesSpace: true)
-        }
-        .frame(width: 90, height: 90)
-        .padding(10)
-        .overlay {
-            HStack {
-                Spacer()
-                Image(systemName: "play.fill")
-                    .resizable()
-                    .foregroundColor(.green)
-                    .frame(width: 16, height: 16)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer()
+            if opening {
+                ProgressView().controlSize(.small)
+            } else {
+                Button("button.run.short", systemImage: "play.fill") { runProgram() }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help(Text("button.run.short"))
             }
-            .frame(width: 45, height: 45)
-            .padding(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
         }
+        .contentShape(Rectangle())
         .contextMenu {
             ProgramMenuView(program: program, path: $path)
 
@@ -75,10 +69,9 @@ struct PinView: View {
             }
             .labelStyle(.titleAndIcon)
         }
-        // One click, the same as a library card. The two were a single click
-        // here and a double click there for the same object, and the library is
-        // where most launches now happen.
-        .onTapGesture {
+        // Double-click opens, as in a Finder list; a single click on a row
+        // should never start a game by accident.
+        .onTapGesture(count: 2) {
             runProgram()
         }
         .sheet(isPresented: $showRenameSheet) {
@@ -87,7 +80,14 @@ struct PinView: View {
             }
         }
         .task {
-            name = pin.name
+            // A pin named after its executable ("steam") reads better under
+            // the launcher's own name, as it does in the Library.
+            let exeName = program.url.deletingPathExtension().lastPathComponent
+            if pin.name == exeName, let launcher = LauncherType.detect(from: program.url) {
+                name = launcher.displayName
+            } else {
+                name = pin.name
+            }
             let icon = await IconCache.shared.iconOrFallback(for: program.url, peFile: program.peFile)
             self.image = Image(nsImage: icon)
         }
@@ -102,13 +102,7 @@ struct PinView: View {
     }
 
     func runProgram() {
-        withAnimation(.easeIn(duration: 0.25)) {
-            opening = true
-        } completion: {
-            withAnimation(.easeOut(duration: 0.1)) {
-                opening = false
-            }
-        }
+        opening = true
 
         // Capture modifier flags synchronously before entering async context
         let useTerminal = NSEvent.modifierFlags.contains(.shift)
@@ -119,6 +113,7 @@ struct PinView: View {
                     toast = .clipboardCleared(contentType: contentType, sizeBytes: sizeBytes)
                 }
             }
+            opening = false
             withAnimation {
                 toast = result.toastData
             }

@@ -43,15 +43,7 @@ struct BottleListEntry: View {
                     // identifies it.
                     .help(name)
                 Spacer()
-                if runningCount > 0 {
-                    Text("\(runningCount)")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.blue.opacity(0.15))
-                        .clipShape(Capsule())
-                        .foregroundStyle(.blue)
-                } else if hasOrphanProcesses {
+                if runningCount == 0, hasOrphanProcesses {
                     // A button, not a decoration: this is the strongest signal
                     // in the sidebar and it used to be a tooltip with nothing
                     // behind it.
@@ -71,6 +63,8 @@ struct BottleListEntry: View {
                 duplicationProgressRow(phase: phase)
             }
         }
+        // The sidebar's own count, as Mail shows unread messages.
+        .badge(runningCount)
         .opacity(bottle.isAvailable ? 1.0 : 0.5)
         .onAppear {
             Task { await probeRunningState() }

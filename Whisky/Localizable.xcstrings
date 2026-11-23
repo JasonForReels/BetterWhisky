@@ -22144,6 +22144,17 @@
         }
       }
     },
+    "bottle.section.pinned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinned"
+          }
+        }
+      }
+    },
     "button.cDrive" : {
       "localizations" : {
         "ar" : {
@@ -23028,6 +23039,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯出為封存檔⋯"
+          }
+        }
+      }
+    },
+    "button.more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
           }
         }
       }
@@ -24952,6 +24974,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "執行⋯"
+          }
+        }
+      }
+    },
+    "button.run.short" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run"
           }
         }
       }

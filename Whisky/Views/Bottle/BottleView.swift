@@ -37,12 +37,15 @@ struct BottleView: View {
     /// Launches the ``ProcessRegistry`` tracks for this bottle, for the Processes badge.
     @State private var trackedProcessCount: Int = 0
 
-    private let gridLayout = [GridItem(.adaptive(minimum: 100, maximum: .infinity))]
-
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                LazyVGrid(columns: gridLayout, alignment: .center) {
+            // One grouped form, the shape of a System Settings pane: what you
+            // run from this bottle first, then where you go to change it.
+            Form {
+                Section {
+                    header
+                }
+                Section("bottle.section.pinned") {
                     ForEach(bottle.pinnedPrograms, id: \.id) { pinnedProgram in
                         PinView(
                             bottle: bottle,
@@ -54,48 +57,29 @@ struct BottleView: View {
                     }
                     PinAddView(bottle: bottle)
                 }
-                .padding()
-                Form {
+                Section {
                     NavigationLink(value: BottleStage.programs) {
-                        Label("tab.programs", systemImage: "list.bullet")
+                        Label("tab.programs", systemImage: "square.stack")
                     }
                     .accessibilityIdentifier("nav.installedPrograms")
-                    NavigationLink(value: BottleStage.config) {
-                        Label("tab.config", systemImage: "gearshape")
-                    }
-                    .accessibilityIdentifier("nav.bottleConfiguration")
                     NavigationLink(value: BottleStage.processes) {
-                        HStack {
-                            Label("tab.processes", systemImage: "hockey.puck.circle")
-                            if trackedProcessCount > 0 {
-                                Text("\(trackedProcessCount)")
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(.blue.opacity(0.15))
-                                    .clipShape(Capsule())
-                                    .foregroundStyle(.blue)
-                            }
-                        }
+                        Label("tab.processes", systemImage: "waveform.path.ecg")
                     }
+                    .badge(trackedProcessCount)
                     .accessibilityIdentifier("nav.runningProcesses")
                     NavigationLink(value: BottleStage.gameConfigs) {
                         Label("tab.gameConfigs", systemImage: "gamecontroller")
                     }
                     .accessibilityIdentifier("nav.gameConfigurations")
                 }
-                .formStyle(.grouped)
-                .scrollDisabled(true)
+                Section {
+                    NavigationLink(value: BottleStage.config) {
+                        Label("tab.config", systemImage: "gearshape")
+                    }
+                    .accessibilityIdentifier("nav.bottleConfiguration")
+                }
             }
-            .bottomBar {
-                BottleActionBar(
-                    bottle: bottle,
-                    showWinetricksSheet: $showWinetricksSheet,
-                    programLoading: $programLoading,
-                    toast: $toast,
-                    onLaunch: updateStartMenu
-                )
-            }
+            .formStyle(.grouped)
             .task {
                 await updateStartMenu()
             }
@@ -108,22 +92,17 @@ struct BottleView: View {
             }
             .disabled(!bottle.isAvailable)
             .navigationTitle(bottle.settings.name)
-            .navigationSubtitle(
-                bottle.settings.graphicsBackend == .recommended
-                    ? String(
-                        localized: "bottle.subtitle.autoBackend \(GraphicsBackendResolver.resolve().displayName)"
-                    )
-                    : ""
-            )
             .accessibilityIdentifier("bottleDetail")
             .toast($toast)
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("button.duplicateBottle", systemImage: "doc.on.doc") {
-                        showDuplicate = true
-                    }
-                    .disabled(bottle.inFlight)
-                }
+                BottleToolbar(
+                    bottle: bottle,
+                    showWinetricksSheet: $showWinetricksSheet,
+                    showDuplicate: $showDuplicate,
+                    programLoading: $programLoading,
+                    toast: $toast,
+                    onLaunch: updateStartMenu
+                )
             }
             .sheet(isPresented: $showWinetricksSheet) {
                 WinetricksView(bottle: bottle)
@@ -198,6 +177,41 @@ struct BottleView: View {
 }
 
 extension BottleView {
+    /// The top of the pane, like a System Settings header: what this bottle
+    /// is, in the three facts that decide whether a game will run in it.
+    private var header: some View {
+        HStack(spacing: 16) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(bottle.settings.name)
+                    .font(.title2.weight(.semibold))
+                    .lineLimit(1)
+                Text(facts)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// "Windows 10 · Wine 10.0.0 · D3DMetal". The backend is the one a launch
+    /// would actually use, so "Recommended" resolves to its real name.
+    private var facts: String {
+        let backend = bottle.settings.graphicsBackend == .recommended
+            ? GraphicsBackendResolver.resolve().displayName
+            : bottle.settings.graphicsBackend.displayName
+        return [
+            bottle.settings.windowsVersion.pretty(),
+            "Wine \(bottle.settings.wineVersion)",
+            backend
+        ].joined(separator: " · ")
+    }
+
     /// Rescans the bottle and pins the programs of shortcuts that installers
     /// added since the last check (see ``StartMenuShortcutSync``).
     private func updateStartMenu() async {
