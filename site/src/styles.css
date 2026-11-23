@@ -203,6 +203,9 @@ img { display: block; max-width: 100%; }
 /* ---------- 7. Build ---------- */
 .build { text-align: center; padding-bottom: 10vh; }
 .build .sub { color: var(--muted); font-size: 21px; margin: -12px 0 40px; }
+/* The second line sits under the buttons, so it takes real space above it
+   instead of the heading's pull-up. */
+.build .build-alt { margin: 64px 0 20px; font-size: 17px; }
 pre {
   text-align: left; background: #0d0d0f; border: 1px solid var(--rule); border-radius: 18px;
   padding: 24px 28px; overflow-x: auto; margin: 0 0 40px;

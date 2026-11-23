@@ -198,7 +198,7 @@ export default function App() {
           <a className="btn" href={DMG}>Download BetterWhisky {VERSION}</a>
           <a className="link" href={`${REPO}/releases`}>Release notes ›</a>
         </div>
-        <p className="sub" data-reveal>Or build it yourself:</p>
+        <p className="sub build-alt" data-reveal>Or build it yourself:</p>
         <pre data-reveal><code>{`git clone ${REPO}.git
 cd BetterWhisky
 brew install swiftlint
