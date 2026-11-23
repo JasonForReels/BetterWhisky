@@ -218,6 +218,7 @@ public enum SteamModLauncher {
             ensureLoaderOverride(gameExecutable: gameExe, bottle: bottle)
         }
         try await prepare(appId: appId, bottle: bottle)
+        await ModAccountPrimer.primeIfNeeded(appId: appId, gameFolder: version.gameFolder, bottle: bottle)
         try select(ModInstaller.mainExecutable(in: copy), appId: appId, bottleURL: bottle.url)
     }
 

@@ -290,16 +290,7 @@ extension LibraryModel {
                 do {
                     let steamWasRunning = await SteamModLauncher.isSteamRunning()
                     let started = Date()
-                    if let copy = variant.modFolder {
-                        if let gameExe = ModInstaller.mainExecutable(in: variant.gameFolder) {
-                            SteamModLauncher.ensureLoaderOverride(gameExecutable: gameExe, bottle: bottle)
-                        }
-                        try await SteamModLauncher.prepare(appId: appID, bottle: bottle)
-                        let exe = ModInstaller.mainExecutable(in: copy)
-                        try SteamModLauncher.select(exe, appId: appID, bottleURL: bottle.url)
-                    } else {
-                        try SteamModLauncher.select(nil, appId: appID, bottleURL: bottle.url)
-                    }
+                    try await SteamModLauncher.point(appId: appID, at: variant, bottle: bottle)
                     orchestrator(for: bottle).launch(game)
                     launchRequest = LaunchRequest(
                         title: game.name,

@@ -158,3 +158,18 @@ struct SteamBackgroundUninstallTests {
         #expect(FileManager.default.fileExists(atPath: outside.path(percentEncoded: false)))
     }
 }
+
+@Suite("Mod account primer")
+struct ModAccountPrimerTests {
+    @Test func readsTheSignedInLine() throws {
+        let log = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString).log")
+        defer { try? FileManager.default.removeItem(at: log) }
+        #expect(!ModAccountPrimer.logShowsSignIn(log))
+        try "[Network] > [EOSManager] > finishing flow, login status LoggedIn".write(
+            to: log, atomically: true, encoding: .utf8
+        )
+        #expect(ModAccountPrimer.logShowsSignIn(log))
+        #expect(ModAccountPrimer.logURL(appId: 945_360, bottleURL: URL(filePath: "/b")).lastPathComponent
+            == "account-primer-945360.log")
+    }
+}
