@@ -131,6 +131,7 @@ public enum SteamLauncher {
     /// path for it mostly falls back anyway), no sandbox processes, and no
     /// friends or chat windows, which a hidden client never shows. Measured
     /// on 2026-11-23: 2.8 GB down to 2.1–2.5 GB, with games still signing in.
+    /// Only for hidden starts: Steam's windows draw blank with them.
     static let clientArguments = [
         "-silent", "-no-cef-sandbox", "-cef-disable-gpu", "-cef-disable-gpu-compositing",
         "-nochatui", "-nofriendsui"
@@ -138,11 +139,16 @@ public enum SteamLauncher {
 
     @MainActor
     @discardableResult
-    static func startClient(steamExe: URL, bottle: Bottle) -> Task<Wine.ProgramRunResult, any Error> {
+    static func startClient(
+        steamExe: URL, bottle: Bottle, hidden: Bool = true
+    ) -> Task<Wine.ProgramRunResult, any Error> {
         let overrides = Program.persistedOverrides(for: steamExe, bottleURL: bottle.url)
         return Task {
             try await Wine.runProgram(
-                at: steamExe, args: clientArguments, bottle: bottle, programOverrides: overrides
+                // A start that shows a window (setup's sign-in) gets no flags:
+                // the browser trims leave Steam's windows blank.
+                at: steamExe, args: hidden ? clientArguments : [],
+                bottle: bottle, programOverrides: overrides
             )
         }
     }

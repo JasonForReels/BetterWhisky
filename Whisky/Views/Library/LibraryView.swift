@@ -78,7 +78,12 @@ struct LibraryView: View {
         .toast($model.toast)
         .task {
             // Steam starts slowly under Wine; get it signed in before it's needed.
-            await SteamModLauncher.warmUp(bottles: bottles)
+            // Not while a Steam setup is waiting to run: a second client for
+            // the same account makes the new one hang on its first start.
+            if !SteamLibraryModel.setupRequested, !SteamLibraryModel.setupRunning,
+               !SteamLibraryModel.debugFreshSetupRequested {
+                await SteamModLauncher.warmUp(bottles: bottles)
+            }
             // Mods updated since their last start load faster once pre-compiled.
             await ModPrecompiler.runWhereNeeded(bottles: bottles)
         }

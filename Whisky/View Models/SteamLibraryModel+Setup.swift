@@ -55,6 +55,9 @@ extension SteamLibraryModel {
     /// it appears: the one click is the button that brought you here.
     static var setupRequested = false
 
+    /// While a setup runs, so nothing else starts another Steam meanwhile.
+    static var setupRunning = false
+
     /// The debug switch in ``setupBottle()``, so the page starts the test run itself.
     static var debugFreshSetupRequested: Bool {
         #if DEBUG
@@ -72,8 +75,12 @@ extension SteamLibraryModel {
         guard !settingUp else { return }
         setupStep = .creatingBottle
         connection = .loading
+        Self.setupRunning = true
         Task {
-            defer { setupStep = nil }
+            defer {
+                setupStep = nil
+                Self.setupRunning = false
+            }
             do {
                 let bottle = try await setupBottle()
                 setupStep = .signingIn
@@ -84,6 +91,8 @@ extension SteamLibraryModel {
                         await reload()
                         return
                     }
+                    // Signed in, Steam opens its library window: hide it.
+                    try? await SteamInstallService.hideAfterSignIn(bottle: bottle)
                 }
                 setupStep = .loadingLibrary
                 await waitForLibraryCache(in: bottle)
@@ -125,13 +134,9 @@ extension SteamLibraryModel {
             throw SteamLaunchError.steamNotInstalled
         }
         try await Wine.prepareBottlePrefix(bottle: bottle)
-        // Only Steam's sign-in should show. `-silent` keeps the library and
-        // every other Steam window hidden, but a client with no account
-        // still puts up its sign-in window. A client that is already running
-        // (BetterWhisky warms Steam up hidden) is showing that window
-        // already; starting a second `steam.exe` would only freeze waiting
-        // on it, so nothing is started then.
-        await SteamInstallService.startClientForSignIn(bottle: bottle)
+        // Only Steam's sign-in should show: a signed-out client started
+        // without `-silent` puts up just that window.
+        try await SteamInstallService.showSignIn(bottle: bottle)
     }
 
     /// Steam writes `loginusers.vdf` once an account signs in. The first run

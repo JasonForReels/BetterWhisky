@@ -215,8 +215,6 @@ public enum SteamInstallService {
     }
 
     /// Starts the client hidden (`-silent`) unless it is already running.
-    /// Signed out, Steam then shows only its sign-in window; signed in,
-    /// nothing at all.
     @MainActor
     public static func startClientForSignIn(bottle: Bottle) async {
         guard let steamRoot = SteamLibrary.detectInstall(bottleURL: bottle.url) else { return }
@@ -224,6 +222,26 @@ public enum SteamInstallService {
         if !running {
             SteamLauncher.startClient(steamExe: steamRoot.appending(path: "steam.exe"), bottle: bottle)
         }
+    }
+
+    /// Starts the client so its sign-in window shows, with no flags at all:
+    /// `-silent` hides that window on a new install, and the memory flags
+    /// leave it blank. A signed-out client then shows only its sign-in window. A hidden client
+    /// already running is restarted this way.
+    @MainActor
+    public static func showSignIn(bottle: Bottle) async throws {
+        guard let steamRoot = SteamLibrary.detectInstall(bottleURL: bottle.url) else { return }
+        _ = try await shutDownClient(steamRoot: steamRoot, bottle: bottle)
+        SteamLauncher.startClient(steamExe: steamRoot.appending(path: "steam.exe"), bottle: bottle, hidden: false)
+    }
+
+    /// After sign-in Steam opens its library window: restart it hidden,
+    /// now with the memory flags.
+    @MainActor
+    public static func hideAfterSignIn(bottle: Bottle) async throws {
+        guard let steamRoot = SteamLibrary.detectInstall(bottleURL: bottle.url) else { return }
+        _ = try await shutDownClient(steamRoot: steamRoot, bottle: bottle)
+        SteamLauncher.startClient(steamExe: steamRoot.appending(path: "steam.exe"), bottle: bottle)
     }
 
     /// Closes the bottle's client and waits for it to exit.
