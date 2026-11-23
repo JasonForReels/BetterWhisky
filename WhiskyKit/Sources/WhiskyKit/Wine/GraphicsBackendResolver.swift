@@ -27,8 +27,8 @@ import os.log
 public enum GraphicsBackendResolver {
     /// Resolves the recommended graphics backend for the current system.
     ///
-    /// D3DMetal is the best-supported path on macOS 15+ Apple Silicon, but only
-    /// GPTK-based runtimes bundle its payload. Recommending it on a runtime
+    /// DXMT (native D3D11-to-Metal) is preferred when the runtime bundles it,
+    /// then D3DMetal, which only GPTK-based runtimes bundle. Recommending it on a runtime
     /// without the payload makes launches silently fall back to wined3d, which
     /// cannot bring up D3D11 on current macOS — so the resolver only recommends
     /// backends that are actually installed: DXMT (native D3D11-to-Metal) when
@@ -89,9 +89,9 @@ public enum GraphicsBackendResolver {
         if let steering {
             return BackendResolution(backend: .dxvk, reason: .steered(steering))
         }
-        if d3dMetalInstalled {
-            return BackendResolution(backend: .d3dMetal, reason: .d3dMetal)
-        }
+        // DXMT comes first when the runtime ships a usable payload: it draws
+        // Unity games such as Among Us correctly where D3DMetal breaks their
+        // lighting. D3DMetal is next, and DXVK is the fallback.
         // The same gate the backend picker applies, not the version record
         // alone: a version-only check lets auto promise DXMT on a runtime
         // whose payload is missing or builtin-variant, which then throws
@@ -103,6 +103,9 @@ public enum GraphicsBackendResolver {
             dxmtRuntimeNative: dxmtRuntimeNative
         ) {
             return BackendResolution(backend: .dxmt, reason: .dxmt)
+        }
+        if d3dMetalInstalled {
+            return BackendResolution(backend: .d3dMetal, reason: .d3dMetal)
         }
         return BackendResolution(backend: .dxvk, reason: .dxvkFallback)
     }
@@ -191,9 +194,9 @@ public enum DXVKSteering: Sendable, Equatable {
 public enum RecommendedReason: Sendable, Equatable {
     /// The executable's window is drawn by Chromium, so it runs on DXVK.
     case steered(DXVKSteering)
-    /// The GPTK payload is installed.
+    /// The GPTK payload is installed and there is no usable DXMT.
     case d3dMetal
-    /// The runtime bundles a native DXMT payload, and there is no GPTK.
+    /// The runtime bundles a native DXMT payload, preferred over GPTK.
     case dxmt
     /// Neither is available; DXVK ships with every runtime.
     case dxvkFallback
@@ -204,9 +207,9 @@ public enum RecommendedReason: Sendable, Equatable {
         case let .steered(steering):
             "steered to DXVK (\(steering.evidence))"
         case .d3dMetal:
-            "D3DMetal payload installed"
+            "D3DMetal payload installed, no DXMT"
         case .dxmt:
-            "native DXMT payload, no D3DMetal"
+            "native DXMT payload"
         case .dxvkFallback:
             "DXVK fallback, no D3DMetal or DXMT"
         }

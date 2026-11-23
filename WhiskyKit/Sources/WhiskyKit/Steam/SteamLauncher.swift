@@ -100,7 +100,10 @@ public enum SteamLauncher {
         // One scan for both uses: it runs on the main actor.
         let scan = installURL.map { SteamLibrary.scanExecutables(under: $0) }
         let plan = launchPlan(appId: appId, scan: scan, bottle: bottle)
-        let request = appLaunchRequest(appId: appId, scan: scan, plan: plan)
+        let request = appLaunchRequest(
+            appId: appId, scan: scan, plan: plan,
+            modTarget: SteamModLauncher.selected(appId: appId, bottleURL: bottle.url)
+        )
         let steamExe = steamRoot.appending(path: "steam.exe")
 
         return Task {

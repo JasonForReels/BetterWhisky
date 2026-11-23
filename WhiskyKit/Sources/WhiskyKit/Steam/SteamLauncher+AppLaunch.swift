@@ -49,18 +49,22 @@ extension SteamLauncher {
     ///   - appId: The game's Steam App ID.
     ///   - scan: The scan of the game's install folder, when it is known.
     ///   - plan: The game's launch plan.
+    ///   - modTarget: The modded copy Steam's launch script redirects to, if one
+    ///     is selected. It runs from its own folder, so a DXMT plan goes there too.
     /// - Returns: The request ``Wine`` prepares and runs the invocation from.
-    static func appLaunchRequest(appId: Int, scan: SteamExecutableScan?, plan: LaunchPlan) -> Wine
-        .ProgramLaunchRequest {
-        Wine.ProgramLaunchRequest(
+    static func appLaunchRequest(
+        appId: Int, scan: SteamExecutableScan?, plan: LaunchPlan, modTarget: URL? = nil
+    ) -> Wine.ProgramLaunchRequest {
+        let executableURLs = (scan?.planExecutables ?? []) + (modTarget.map { [$0] } ?? [])
+        return Wine.ProgramLaunchRequest(
             args: ["-applaunch", String(appId)] + plan.launchArguments,
             environment: [:],
             programOverrides: plan.overrides,
             programSettings: nil,
             gameProfileEnvironment: plan.gameProfileEnvironment,
             overridesApplyToDescendants: true,
-            descendantExecutables: gameExecutables(scanned: scan?.planExecutables ?? [], plan: plan),
-            descendantExecutableURLs: scan?.planExecutables ?? [],
+            descendantExecutables: gameExecutables(scanned: executableURLs, plan: plan),
+            descendantExecutableURLs: executableURLs,
             ownSettingsExecutables: scan?.ownSettingsExecutables ?? [],
             descendantLaunchers: plan.startsLaunchers
         )

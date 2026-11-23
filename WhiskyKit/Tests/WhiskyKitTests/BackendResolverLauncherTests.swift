@@ -21,11 +21,19 @@ import SemanticVersion
 import XCTest
 
 final class BackendResolverLauncherTests: XCTestCase {
-    /// The whole point: with D3DMetal installed a game gets it, because that is
-    /// the reason to install it.
+    /// With D3DMetal installed and no DXMT, a game gets D3DMetal.
     func testGameGetsD3DMetalWhenInstalled() {
-        let backend = GraphicsBackendResolver.resolve(for: nil, d3dMetalInstalled: true)
+        let backend = GraphicsBackendResolver.resolve(for: nil, runtimeInfo: nil, d3dMetalInstalled: true)
         XCTAssertEqual(backend, .d3dMetal)
+    }
+
+    /// With both installed, DXMT wins: it draws Unity lighting that D3DMetal breaks.
+    func testGameGetsDXMTOverD3DMetal() {
+        let runtime = WhiskyWineVersion(version: SemanticVersion(3, 1, 1), dxmtVersion: "0.80")
+        let resolution = GraphicsBackendResolver.resolution(
+            for: nil, runtimeInfo: runtime, d3dMetalInstalled: true, dxmtRuntimeNative: true
+        )
+        XCTAssertEqual(resolution, BackendResolution(backend: .dxmt, reason: .dxmt))
     }
 
     /// And a launcher does not. Chromium cannot render on D3DMetal: the window
@@ -90,7 +98,7 @@ final class BackendResolverLauncherTests: XCTestCase {
         XCTAssertNil(LauncherType.detect(from: url))
         XCTAssertEqual(
             GraphicsBackendResolver.resolve(
-                for: LauncherType.detect(from: url), d3dMetalInstalled: true
+                for: LauncherType.detect(from: url), runtimeInfo: nil, d3dMetalInstalled: true
             ),
             .d3dMetal
         )

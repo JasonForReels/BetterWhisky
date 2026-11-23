@@ -87,6 +87,28 @@ final class SteamDXMTGameFolderLifecycleTests {
         #expect(Fixture.holdsDXMT(game.deletingLastPathComponent()))
     }
 
+    @Test("A selected modded copy outside the install folder gets the DXMT trio too")
+    func modTargetGetsDXMT() async throws {
+        let bottle = try fixture.makeBottle(.recommended)
+        _ = try fixture.makeGame(in: bottle)
+        let modExe = try fixture.makeGame(in: bottle, folder: "Mods/Game Mod")
+        let modFolder = modExe.deletingLastPathComponent()
+        let scan = SteamLibrary.scanExecutables(under: installURL(bottle))
+        let plan = SteamLauncher.launchPlan(appId: appId, scan: scan, bottle: bottle)
+
+        let request = SteamLauncher.appLaunchRequest(appId: appId, scan: scan, plan: plan, modTarget: modExe)
+        #expect(request.descendantExecutableURLs.last == modExe)
+
+        let recorder = ScopeRecorder()
+        _ = try await Wine.prepareProgramLaunch(
+            at: fixture.steam(in: bottle), bottle: bottle, request: request,
+            recommendedBackend: .dxmt, builtinD3D12IsD3DMetal: false,
+            overrideWriter: recorder.writer, importer: recorder.importer,
+            dxvkFolder: fixture.makeDXVKPayload(), dxmtFolder: fixture.makeDXMTPayload()
+        )
+        #expect(Fixture.holdsDXMT(modFolder))
+    }
+
     @Test("A direct D3DMetal launch of an Unreal stub takes back the copies in Binaries/Win64 too")
     func directLaunchOfTheStubCleansTheWholeGame() async throws {
         let bottle = try fixture.makeBottle(.recommended)

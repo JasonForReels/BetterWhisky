@@ -152,7 +152,7 @@ final class RSILauncherTests {
         let url = URL(fileURLWithPath: "C:/\(Self.gameFolder)/StarCitizen.exe")
         let runtime = WhiskyWineVersion(version: SemanticVersion(3, 1, 1), dxmtVersion: "0.80")
         let launcher = LauncherType.detect(from: url)
-        #expect(GraphicsBackendResolver.resolve(for: launcher, d3dMetalInstalled: true) == .d3dMetal)
+        #expect(GraphicsBackendResolver.resolve(for: launcher, runtimeInfo: nil, d3dMetalInstalled: true) == .d3dMetal)
         #expect(
             GraphicsBackendResolver.resolve(
                 for: launcher, runtimeInfo: runtime, d3dMetalInstalled: false, dxmtRuntimeNative: true
