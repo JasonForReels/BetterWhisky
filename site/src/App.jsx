@@ -1,6 +1,8 @@
 import useScrollScenes from './useScrollScenes.js'
 
 const REPO = 'https://github.com/JasonForReels/BetterWhisky'
+const VERSION = '1.0.0'
+const DMG = `${REPO}/releases/download/v${VERSION}/BetterWhisky-${VERSION}.dmg`
 
 const statement =
   'Paste a GitHub link. Press Play. BetterWhisky finds the right release, reads the install steps, keeps the game version the mod needs, and starts it through Steam so you stay signed in.'
@@ -49,7 +51,7 @@ export default function App() {
         <div className="nav-links">
           <a href="#showcase">Overview</a>
           <a href="#speed">Speed</a>
-          <a href="#build">Build</a>
+          <a href="#download">Download</a>
           <a className="nav-cta" href={REPO}>GitHub</a>
         </div>
       </nav>
@@ -61,7 +63,7 @@ export default function App() {
             <p className="eyebrow">BetterWhisky for Mac</p>
             <h1>Whisky,<br />with one-click mods.</h1>
             <div className="ctas">
-              <a className="btn" href="#build">Build for macOS</a>
+              <a className="btn" href={DMG}>Download for Mac</a>
               <a className="link" href="#showcase">See how it works ›</a>
             </div>
           </div>
@@ -141,17 +143,22 @@ export default function App() {
         </div>
       </section>
 
-      {/* 7. Build */}
-      <section id="build" className="build">
-        <h2 className="huge" data-reveal>Build it tonight.</h2>
-        <p className="sub" data-reveal>No signed releases yet. Apple Silicon, macOS Sequoia 15 or later.</p>
+      {/* 7. Download */}
+      <section id="download" className="build">
+        <h2 className="huge" data-reveal>Download it tonight.</h2>
+        <p className="sub" data-reveal>
+          Version {VERSION}, signed and notarised by Apple. Apple Silicon, macOS Sequoia 15 or later.
+          It updates itself from here on.
+        </p>
+        <div className="ctas" data-reveal>
+          <a className="btn" href={DMG}>Download BetterWhisky {VERSION}</a>
+          <a className="link" href={`${REPO}/releases`}>Release notes ›</a>
+        </div>
+        <p className="sub" data-reveal>Or build it yourself:</p>
         <pre data-reveal><code>{`git clone ${REPO}.git
 cd BetterWhisky
 brew install swiftlint
 xcodebuild -project Whisky.xcodeproj -scheme Whisky -configuration Release build`}</code></pre>
-        <div className="ctas" data-reveal>
-          <a className="btn" href={REPO}>View on GitHub</a>
-        </div>
       </section>
 
       <footer>
