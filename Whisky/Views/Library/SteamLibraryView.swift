@@ -32,6 +32,7 @@ struct SteamLibraryView: View {
     @AppStorage("steamLibrarySort") private var sort: SteamLibrarySort = .recentlyPlayed
     @State private var search = ""
     @State private var uninstallTarget: SteamLibraryRow?
+    @State private var modsProgram: Program?
 
     private var visible: [SteamLibraryRow] {
         model.visibleRows(filter: filter, sort: sort, search: search)
@@ -70,6 +71,9 @@ struct SteamLibraryView: View {
             }
         }
         .onDisappear { model.stopPolling() }
+        .sheet(item: $modsProgram, onDismiss: { Task { await model.rebuild() } }, content: { program in
+            ModPickerSheet(program: program)
+        })
         .confirmationDialog(
             "Uninstall \(uninstallTarget?.game.name ?? "")?",
             isPresented: Binding(get: { uninstallTarget != nil }, set: { if !$0 { uninstallTarget = nil } }),
@@ -144,6 +148,7 @@ struct SteamLibraryView: View {
                         lastPlayed: row.lastPlayed,
                         state: .idle,
                         launch: { primaryAction(row) },
+                        onSettings: row.hasMods && row.install == .installed ? { openMods(row) } : nil,
                         install: row.install,
                         detail: detail(for: row)
                     )
@@ -152,6 +157,15 @@ struct SteamLibraryView: View {
             }
             .padding(18)
         }
+    }
+
+    /// The game's mods, through the same picker the home Library and the
+    /// program page use: this is the front door to that workflow.
+    private func openMods(_ row: SteamLibraryRow) {
+        guard let url = row.bottleURL, let bottle = bottleVM.bottles.first(where: { $0.url == url }),
+              let game = SteamLibrary.enumerate(bottleURL: url).first(where: { $0.appId == row.game.appId }),
+              let exe = ModInstaller.mainExecutable(in: game.installURL) else { return }
+        modsProgram = bottle.programs.first { $0.url == exe } ?? Program(url: exe, bottle: bottle)
     }
 
     private func primaryAction(_ row: SteamLibraryRow) {

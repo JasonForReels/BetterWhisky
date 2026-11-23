@@ -125,11 +125,13 @@ extension SteamLibraryModel {
             throw SteamLaunchError.steamNotInstalled
         }
         try await Wine.prepareBottlePrefix(bottle: bottle)
-        // BetterWhisky warms Steam up hidden in every bottle, so a client may
-        // already be running. A second `steam.exe` then waits on the first
-        // and its window freezes; asking the running one to show itself is
-        // what brings up sign-in. A cold start is told the same.
-        try await Wine.runProgram(at: root.appending(path: "steam.exe"), args: ["steam://open/main"], bottle: bottle)
+        // Only Steam's sign-in should show. `-silent` keeps the library and
+        // every other Steam window hidden, but a client with no account
+        // still puts up its sign-in window. A client that is already running
+        // (BetterWhisky warms Steam up hidden) is showing that window
+        // already; starting a second `steam.exe` would only freeze waiting
+        // on it, so nothing is started then.
+        await SteamInstallService.startClientForSignIn(bottle: bottle)
     }
 
     /// Steam writes `loginusers.vdf` once an account signs in. The first run

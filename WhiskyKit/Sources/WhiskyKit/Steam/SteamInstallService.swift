@@ -214,6 +214,18 @@ public enum SteamInstallService {
         try fileManager.removeItem(at: manifestURL)
     }
 
+    /// Starts the client hidden (`-silent`) unless it is already running.
+    /// Signed out, Steam then shows only its sign-in window; signed in,
+    /// nothing at all.
+    @MainActor
+    public static func startClientForSignIn(bottle: Bottle) async {
+        guard let steamRoot = SteamLibrary.detectInstall(bottleURL: bottle.url) else { return }
+        let running = await SteamLauncher.isClientRunning(bottle: bottle, hostSteamPIDs: SteamLauncher.hostSteamPIDs())
+        if !running {
+            SteamLauncher.startClient(steamExe: steamRoot.appending(path: "steam.exe"), bottle: bottle)
+        }
+    }
+
     /// Closes the bottle's client and waits for it to exit.
     /// - Returns: Whether it was running.
     @MainActor
