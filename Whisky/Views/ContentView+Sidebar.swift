@@ -21,129 +21,187 @@ import SemanticVersion
 import SwiftUI
 import WhiskyKit
 
-// MARK: - Sidebar & Detail
+// MARK: - Tabs
+
+/// The three places in the window, picked from the bar at the top.
+enum AppTab: String, CaseIterable, Identifiable {
+    case library
+    case bottles
+    case search
+
+    var id: Self { self }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .library: "library.title"
+        case .bottles: "sidebar.bottles"
+        case .search: "tab.search"
+        }
+    }
+}
+
+/// The three tabs, as the system's own segmented control. In the toolbar on
+/// macOS 26 Apple draws it in Liquid Glass, with a thumb you can slide
+/// between segments, so none of the glass here is hand-made.
+struct TopTabBar: View {
+    @Binding var selection: AppTab
+
+    var body: some View {
+        Picker("tab.picker", selection: $selection) {
+            ForEach(AppTab.allCases) { tab in
+                Text(tab.title)
+                    .tag(tab)
+                    .accessibilityIdentifier("tab.\(tab.rawValue)")
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+}
+
+// MARK: - Pages
 
 extension ContentView {
-    var sidebar: some View {
-        ScrollViewReader { proxy in
-            List(selection: $selected) {
-                Section {
-                    libraryRow
-                }
-                // A bottle is a Wine prefix, so it belongs under a heading rather
-                // than being the whole sidebar. With one bottle this is the row
-                // that reaches its config; with several it is also the switcher.
-                Section("sidebar.bottles") {
-                    ForEach(sortedBottles) { bottle in
-                        Group {
-                            if bottle.inFlight {
-                                HStack {
-                                    Text(bottle.settings.name)
-                                    Spacer()
-                                    ProgressView().controlSize(.small)
+    @ViewBuilder
+    var page: some View {
+        if bottlesLoaded, bottleVM.countActive() == 0 {
+            createFirstBottle
+        } else {
+            switch tab {
+            case .library:
+                LibraryView(selectedBottle: $selected, refresh: $triggerRefresh)
+            case .bottles:
+                if let url = selected, let bottle = bottleVM.bottles.first(where: { $0.url == url }) {
+                    BottleView(bottle: bottle)
+                        .disabled(bottle.inFlight)
+                        .id(bottle.url)
+                        .toolbar {
+                            ToolbarItem(placement: .navigation) {
+                                Button("sidebar.bottles", systemImage: "chevron.backward") {
+                                    selected = nil
                                 }
-                                .opacity(0.5)
-                            } else if !bottle.isAvailable {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundStyle(.orange)
-                                        .font(.caption)
-                                    Text(bottle.settings.name)
-                                    Spacer()
-                                    Button {
-                                        // Only deregisters, which cannot fail.
-                                        Task { try? await bottle.remove(delete: false) }
-                                    } label: {
-                                        Image(systemName: "xmark.circle")
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("button.removeFromList.help")
-                                }
-                                .opacity(0.6)
-                                .selectionDisabled(true)
-                            } else {
-                                BottleListEntry(
-                                    bottle: bottle,
-                                    selected: $selected,
-                                    refresh: $triggerRefresh,
-                                    toast: $toast
-                                )
-                                .accessibilityIdentifier("sidebar.bottle")
+                                .help(Text("sidebar.bottles"))
                             }
                         }
-                        .id(bottle.url)
-                    }
+                } else {
+                    bottlesGrid
                 }
-            }
-            .animation(.default, value: bottleVM.bottles)
-            .listStyle(.sidebar)
-            .accessibilityIdentifier("bottleSidebar")
-            // No search field here. The library has one, and two fields forty
-            // points apart searching different things (bottles here, programs
-            // there) is a choice nobody should have to make to find a game.
-            .onChange(of: newlyCreatedBottleURL) { _, url in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    selected = url
-                    withAnimation {
-                        proxy.scrollTo(url, anchor: .center)
-                    }
-                }
+            case .search:
+                SearchPage(selectedBottle: $selected, refresh: $triggerRefresh)
             }
         }
     }
 
-    /// Selecting nothing means the library, not an empty pane: the library is
-    /// the home screen, and a person who has not picked a bottle has not made a
-    /// mistake.
-    var libraryRow: some View {
-        Button {
-            selected = nil
-        } label: {
-            Label("library.title", systemImage: "square.grid.2x2")
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+    private var createFirstBottle: some View {
+        ContentUnavailableView {
+            Label("main.createFirst", systemImage: "shippingbox")
+        } actions: {
+            Button("button.createBottle", systemImage: "plus") {
+                showBottleCreation.toggle()
+            }
+            .buttonStyle(.borderedProminent)
         }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(selected == nil ? AnyShapeStyle(.selection) : AnyShapeStyle(.clear))
-        )
-        .accessibilityIdentifier("sidebar.library")
     }
 
-    @ViewBuilder
-    var detail: some View {
-        if let bottle = selected {
-            if let bottle = bottleVM.bottles.first(where: { $0.url == bottle }) {
-                BottleView(bottle: bottle)
-                    .disabled(bottle.inFlight)
-                    .id(bottle.url)
-            }
-        } else if bottleVM.countActive() > 0 {
-            LibraryView(selectedBottle: $selected, refresh: $triggerRefresh)
-        } else {
-            if bottleVM.bottles.isEmpty || bottleVM.countActive() == 0, bottlesLoaded {
-                VStack {
-                    Text("main.createFirst")
-                    Button {
-                        showBottleCreation.toggle()
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("button.createBottle")
+    /// Every bottle as a card. Opening one shows its pane with a Back button,
+    /// so the grid stays the way back to the others.
+    private var bottlesGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 240, maximum: 360), spacing: 16)], spacing: 16) {
+                ForEach(sortedBottles) { bottle in
+                    Group {
+                        if bottle.inFlight || !bottle.isAvailable {
+                            unavailableCard(bottle)
+                        } else {
+                            BottleListEntry(
+                                bottle: bottle,
+                                selected: $selected,
+                                refresh: $triggerRefresh,
+                                toast: $toast,
+                                style: .card
+                            )
+                            .accessibilityIdentifier("sidebar.bottle")
                         }
-                        .padding(6)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.accentColor)
+                    .id(bottle.url)
                 }
             }
+            .padding(24)
         }
+        .animation(.default, value: bottleVM.bottles)
+        .accessibilityIdentifier("bottleSidebar")
+    }
+
+    private func unavailableCard(_ bottle: Bottle) -> some View {
+        HStack(spacing: 12) {
+            if bottle.inFlight {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            }
+            Text(bottle.settings.name).lineLimit(1)
+            Spacer()
+            if !bottle.inFlight {
+                Button {
+                    // Only deregisters, which cannot fail.
+                    Task { try? await bottle.remove(delete: false) }
+                } label: {
+                    Image(systemName: "xmark.circle").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("button.removeFromList.help")
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .opacity(0.6)
     }
 
     var sortedBottles: [Bottle] {
         bottleVM.bottles.sorted()
+    }
+}
+
+/// Search across the library, and the bottles that hold it.
+struct SearchPage: View {
+    @EnvironmentObject var bottleVM: BottleVM
+    @Binding var selectedBottle: URL?
+    @Binding var refresh: Bool
+    @State private var query = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            GlassSearchBar(text: $query)
+                .frame(maxWidth: 560)
+                .padding(.top, 20)
+                .padding(.horizontal, 24)
+
+            if !matchingBottles.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("sidebar.bottles").font(.headline)
+                    ForEach(matchingBottles) { bottle in
+                        Button {
+                            selectedBottle = bottle.url
+                        } label: {
+                            Label(bottle.settings.name, systemImage: "shippingbox")
+                        }
+                        .buttonStyle(.link)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+            }
+
+            LibraryView(selectedBottle: $selectedBottle, refresh: $refresh, searchText: query)
+        }
+
+    }
+
+    private var matchingBottles: [Bottle] {
+        guard !query.isEmpty else { return [] }
+        return bottleVM.bottles.filter { $0.isAvailable && $0.settings.name.localizedCaseInsensitiveContains(query) }
     }
 }
 
@@ -187,4 +245,51 @@ extension ContentView {
 #Preview {
     ContentView(showSetup: .constant(false))
         .environmentObject(BottleVM.shared)
+}
+
+/// The Search page's field: a tall capsule of Apple's Liquid Glass with a
+/// system text field inside. AppKit's search field caps its own height, so a
+/// bar this size has to be a text field on the glass rather than that control.
+struct GlassSearchBar: View {
+    @Binding var text: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField("library.search", text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 17))
+                .focused($focused)
+                .accessibilityIdentifier("search.field")
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .help(Text("button.clear"))
+            }
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 48)
+        .background { glass }
+        .contentShape(Capsule())
+        .onTapGesture { focused = true }
+        .onAppear { focused = true }
+    }
+
+    @ViewBuilder
+    private var glass: some View {
+        if #available(macOS 26.0, *) {
+            Color.clear.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            Capsule().fill(.regularMaterial)
+        }
+    }
 }

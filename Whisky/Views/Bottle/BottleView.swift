@@ -189,7 +189,7 @@ extension BottleView {
                 Text(bottle.settings.name)
                     .font(.title2.weight(.semibold))
                     .lineLimit(1)
-                Text(facts)
+                Text(bottle.summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -197,19 +197,6 @@ extension BottleView {
             Spacer()
         }
         .padding(.vertical, 4)
-    }
-
-    /// "Windows 10 · Wine 10.0.0 · D3DMetal". The backend is the one a launch
-    /// would actually use, so "Recommended" resolves to its real name.
-    private var facts: String {
-        let backend = bottle.settings.graphicsBackend == .recommended
-            ? GraphicsBackendResolver.resolve().displayName
-            : bottle.settings.graphicsBackend.displayName
-        return [
-            bottle.settings.windowsVersion.pretty(),
-            "Wine \(bottle.settings.wineVersion)",
-            backend
-        ].joined(separator: " · ")
     }
 
     /// Rescans the bottle and pins the programs of shortcuts that installers
@@ -220,5 +207,20 @@ extension BottleView {
             // Pins outside Program Files only show up once the list is rebuilt.
             await bottle.updateInstalledPrograms()
         }
+    }
+}
+
+extension Bottle {
+    /// "Windows 10 · Wine 10.0.0 · D3DMetal". The backend is the one a launch
+    /// would actually use, so "Recommended" resolves to its real name.
+    var summary: String {
+        let backend = settings.graphicsBackend == .recommended
+            ? GraphicsBackendResolver.resolve().displayName
+            : settings.graphicsBackend.displayName
+        return [
+            settings.windowsVersion.pretty(),
+            "Wine \(settings.wineVersion)",
+            backend
+        ].joined(separator: " · ")
     }
 }

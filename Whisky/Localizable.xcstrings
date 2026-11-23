@@ -22451,6 +22451,17 @@
         }
       }
     },
+    "button.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
+    },
     "button.createBottle" : {
       "localizations" : {
         "ar" : {
@@ -84478,6 +84489,17 @@
         }
       }
     },
+    "tab.picker" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section"
+          }
+        }
+      }
+    },
     "tab.processes" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -84771,6 +84793,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已安裝的程式"
+          }
+        }
+      }
+    },
+    "tab.search" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
           }
         }
       }

@@ -41,14 +41,16 @@ struct LibraryView: View {
 
     @StateObject private var model = LibraryModel()
 
+    /// Set by the Search tab; the Library tab itself shows everything.
+    var searchText: String = ""
+
     @State private var modsProgram: Program?
-    @State private var search: String = ""
 
     private var bottles: [Bottle] { bottleVM.bottles.filter(\.isAvailable) }
 
     private var visible: [LibraryRow] {
-        guard !search.isEmpty else { return model.rows }
-        return model.rows.filter { $0.item.name.localizedCaseInsensitiveContains(search) }
+        guard !searchText.isEmpty else { return model.rows }
+        return model.rows.filter { $0.item.name.localizedCaseInsensitiveContains(searchText) }
     }
 
     /// Every input that changes what the grid should contain. Pins live in
@@ -67,9 +69,6 @@ struct LibraryView: View {
                 grid
             }
         }
-        .navigationTitle("library.title")
-        .searchable(text: $search, prompt: Text("library.search"))
-        .toolbar { sortMenu }
         .sheet(item: $modsProgram, onDismiss: { refresh.toggle() }, content: { program in
             ModPickerSheet(program: program)
         })
@@ -108,22 +107,6 @@ struct LibraryView: View {
             Button("button.ok") { model.launchError = nil }
         } message: {
             Text(model.launchError ?? "")
-        }
-    }
-
-    private var sortMenu: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                Picker("library.sort", selection: $sort) {
-                    ForEach(LibrarySort.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Label("library.sort", systemImage: "arrow.up.arrow.down")
-            }
-            .accessibilityIdentifier("library.sort")
         }
     }
 

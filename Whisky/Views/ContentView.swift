@@ -27,6 +27,8 @@ struct ContentView: View {
     @Binding var showSetup: Bool
 
     @State var selected: URL?
+    @State var tab: AppTab = .library
+    @AppStorage("librarySort") private var librarySort: LibrarySort = .recent
     @State var showBottleCreation: Bool = false
     @State var bottlesLoaded: Bool = false
     @State var showBottleSelection: Bool = false
@@ -40,11 +42,15 @@ struct ContentView: View {
     @State private var updatingRuntime: Bool = false
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            detail
-        }
+        page
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The tabs are the window's title, so the text title stays empty.
+        // Removing the title outright also took the toolbar's drag area with
+        // it, and the window could no longer be moved.
+        .navigationTitle("")
+        // No toolbar strip: the tabs and buttons float over the content, which
+        // runs up to the top of the window.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toast($toast)
         .onReceive(NotificationCenter.default.publisher(for: .zombieProcessesCleaned)) { _ in
             withAnimation {
@@ -108,16 +114,35 @@ struct ContentView: View {
             ))
         }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showBottleCreation.toggle()
-                } label: {
-                    Image(systemName: "plus")
-                        .help("button.createBottle")
-                }
-                .accessibilityIdentifier("toolbar.createBottle")
+            // In the toolbar's own glass platter, at the control's natural
+            // size: a forced large size is what pushed the thumb past the
+            // platter's right edge.
+            ToolbarItem(placement: .principal) {
+                TopTabBar(selection: $tab)
             }
-            ToolbarItem(placement: .primaryAction) {
+            // The window's own actions, kept together at the trailing edge:
+            // add, filter, refresh.
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("button.createBottle", systemImage: "plus") {
+                    showBottleCreation.toggle()
+                }
+                .help(Text("button.createBottle"))
+                .accessibilityIdentifier("toolbar.createBottle")
+
+                Menu {
+                    Picker("library.sort", selection: $librarySort) {
+                        ForEach(LibrarySort.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("library.sort", systemImage: "line.3.horizontal.decrease")
+                }
+                .help(Text("library.sort"))
+                .disabled(tab == .bottles)
+                .accessibilityIdentifier("library.sort")
+
                 Button {
                     bottleVM.loadBottles()
                     if let bottle = bottleVM.bottles.first(where: { $0.url == selected }) {
@@ -130,14 +155,17 @@ struct ContentView: View {
                         refreshAnimation = .degrees(0)
                     }
                 } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .help("button.refresh")
+                    Label("button.refresh", systemImage: "arrow.triangle.2.circlepath")
                         .rotationEffect(refreshAnimation)
                 }
+                .help(Text("button.refresh"))
             }
         }
         .sheet(isPresented: $showBottleCreation) {
             BottleCreationView(newlyCreatedBottleURL: $newlyCreatedBottleURL)
+        }
+        .onChange(of: newlyCreatedBottleURL) { _, url in
+            if let url { selected = url }
         }
         .sheet(isPresented: $showSetup) {
             SetupView(showSetup: $showSetup, firstTime: false, updatingRuntime: $updatingRuntime)
@@ -155,7 +183,10 @@ struct ContentView: View {
                 toast: $toast
             )
         }
-        .onChange(of: selected) { oldValue, _ in
+        .onChange(of: selected) { oldValue, newValue in
+            // Opening a bottle from anywhere (the library's menu, search, a new
+            // bottle) shows it where bottles live.
+            if newValue != nil, tab != .bottles { tab = .bottles }
             // Check if previous bottle had running processes
             guard let oldURL = oldValue,
                   let oldBottle = bottleVM.bottles.first(where: { $0.url == oldURL })

@@ -25,46 +25,26 @@ struct BottleListEntry: View {
     @Binding var selected: URL?
     @Binding var refresh: Bool
     @Binding var toast: ToastData?
+    /// A sidebar row, or a card in the Bottles grid.
+    var style: Style = .row
+
+    enum Style { case row, card }
 
     @State private var showBottleRename: Bool = false
     @State private var showBottleDuplicate: Bool = false
-    @State private var name: String = ""
-    @State private var runningCount: Int = 0
-    @State private var hasOrphanProcesses: Bool = false
+    @State var name: String = ""
+    @State var runningCount: Int = 0
+    @State var hasOrphanProcesses: Bool = false
     @State private var probeTask: Task<Void, Never>?
-    @State private var duplicationPhase: DuplicationPhase?
+    @State var duplicationPhase: DuplicationPhase?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(name)
-                    // The sidebar truncates at its default width, and a bottle
-                    // named for its contents loses exactly the part that
-                    // identifies it.
-                    .help(name)
-                Spacer()
-                if runningCount == 0, hasOrphanProcesses {
-                    // A button, not a decoration: this is the strongest signal
-                    // in the sidebar and it used to be a tooltip with nothing
-                    // behind it.
-                    Button {
-                        stopBottle()
-                    } label: {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-                    .buttonStyle(.plain)
-                    .help(String(localized: "bottle.orphan.tooltip"))
-                    .accessibilityLabel(Text("bottle.orphan.stop"))
-                }
-            }
-            if let phase = duplicationPhase {
-                duplicationProgressRow(phase: phase)
+        Group {
+            switch style {
+            case .row: rowContent
+            case .card: cardContent
             }
         }
-        // The sidebar's own count, as Mail shows unread messages.
-        .badge(runningCount)
         .opacity(bottle.isAvailable ? 1.0 : 0.5)
         .onAppear {
             Task { await probeRunningState() }
@@ -239,7 +219,7 @@ struct BottleListEntry: View {
     /// Asks the bottle's wineserver to shut down, then re-probes so the badge
     /// clears itself rather than waiting for the next 60-second tick.
     @MainActor
-    private func stopBottle() {
+    func stopBottle() {
         Wine.killBottle(bottle: bottle)
         ProcessRegistry.shared.clearRegistry(for: bottle.url)
         Task {
