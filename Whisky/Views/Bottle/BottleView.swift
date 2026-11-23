@@ -29,6 +29,10 @@ enum BottleStage {
 
 struct BottleView: View {
     @ObservedObject var bottle: Bottle
+    /// Returns to the Bottles grid. Offered only on the bottle's own page:
+    /// deeper pages have the navigation stack's Back, and two back arrows
+    /// side by side read as a bug.
+    var onClose: (() -> Void)?
     @State private var path = NavigationPath()
     @State private var programLoading: Bool = false
     @State private var showWinetricksSheet: Bool = false
@@ -95,6 +99,12 @@ struct BottleView: View {
             .accessibilityIdentifier("bottleDetail")
             .toast($toast)
             .toolbar {
+                if let onClose, path.isEmpty {
+                    ToolbarItem(placement: .navigation) {
+                        Button("sidebar.bottles", systemImage: "chevron.backward", action: onClose)
+                            .help(Text("sidebar.bottles"))
+                    }
+                }
                 BottleToolbar(
                     bottle: bottle,
                     showWinetricksSheet: $showWinetricksSheet,

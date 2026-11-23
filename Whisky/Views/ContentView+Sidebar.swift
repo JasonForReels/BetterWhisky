@@ -72,17 +72,9 @@ extension ContentView {
                 LibraryView(selectedBottle: $selected, refresh: $triggerRefresh)
             case .bottles:
                 if let url = selected, let bottle = bottleVM.bottles.first(where: { $0.url == url }) {
-                    BottleView(bottle: bottle)
+                    BottleView(bottle: bottle, onClose: { selected = nil })
                         .disabled(bottle.inFlight)
                         .id(bottle.url)
-                        .toolbar {
-                            ToolbarItem(placement: .navigation) {
-                                Button("sidebar.bottles", systemImage: "chevron.backward") {
-                                    selected = nil
-                                }
-                                .help(Text("sidebar.bottles"))
-                            }
-                        }
                 } else {
                     bottlesGrid
                 }
