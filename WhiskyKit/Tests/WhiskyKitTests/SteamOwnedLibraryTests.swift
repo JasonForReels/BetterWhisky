@@ -161,15 +161,63 @@ struct SteamBackgroundUninstallTests {
 
 @Suite("Mod account primer")
 struct ModAccountPrimerTests {
-    @Test func readsTheSignedInLine() throws {
-        let log = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString).log")
-        defer { try? FileManager.default.removeItem(at: log) }
-        #expect(!ModAccountPrimer.logShowsSignIn(log))
-        try "[Network] > [EOSManager] > finishing flow, login status LoggedIn".write(
-            to: log, atomically: true, encoding: .utf8
+    let save = ModAccountSave.amongUs(suffix: "_TOUMira")
+
+    func account(_ status: Int, name: String) -> String {
+        "{\r\n  \"account\": {\r\n    \"loginStatus\": \(status)\r\n  },\r\n  \"name\": \"\(name)\"\r\n}"
+    }
+
+    /// A bottle with a Windows user and the game's save folder.
+    func makeBottle() throws -> (bottle: URL, folder: URL) {
+        let bottle = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: bottle.appending(path: "drive_c/users/Public"), withIntermediateDirectories: true
         )
-        #expect(ModAccountPrimer.logShowsSignIn(log))
-        #expect(ModAccountPrimer.logURL(appId: 945_360, bottleURL: URL(filePath: "/b")).lastPathComponent
-            == "account-primer-945360.log")
+        let folder = bottle.appending(path: "drive_c/users/crossover/AppData/LocalLow/Innersloth/Among Us")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return (bottle, folder)
+    }
+
+    @Test func findsTheSaveFolder() throws {
+        let (bottle, folder) = try makeBottle()
+        defer { try? FileManager.default.removeItem(at: bottle) }
+        #expect(ModAccountPrimer.saveFolder(save, bottleURL: bottle)?.standardizedFileURL
+            == folder.standardizedFileURL)
+    }
+
+    @Test func plainSaveMustBeSignedIn() throws {
+        let (bottle, folder) = try makeBottle()
+        defer { try? FileManager.default.removeItem(at: bottle) }
+        #expect(!ModAccountPrimer.plainSaveReady(save, in: folder))
+        try account(0, name: "plain")
+            .write(to: folder.appending(path: "player.amogus"), atomically: true, encoding: .utf8)
+        try "{}".write(to: folder.appending(path: "settings.amogus"), atomically: true, encoding: .utf8)
+        #expect(!ModAccountPrimer.plainSaveReady(save, in: folder))
+        try account(1, name: "plain")
+            .write(to: folder.appending(path: "player.amogus"), atomically: true, encoding: .utf8)
+        #expect(ModAccountPrimer.plainSaveReady(save, in: folder))
+    }
+
+    @Test func replacesASignedOutModSaveButKeepsAGoodOne() throws {
+        let (bottle, folder) = try makeBottle()
+        defer { try? FileManager.default.removeItem(at: bottle) }
+        try account(1, name: "plain")
+            .write(to: folder.appending(path: "player.amogus"), atomically: true, encoding: .utf8)
+        try "{}".write(to: folder.appending(path: "settings.amogus"), atomically: true, encoding: .utf8)
+        let modPlayer = folder.appending(path: "player.amogus_TOUMira")
+        try account(0, name: "failed").write(to: modPlayer, atomically: true, encoding: .utf8)
+
+        try ModAccountPrimer.seedModSave(save, in: folder)
+        #expect(try String(contentsOf: modPlayer, encoding: .utf8).contains("plain"))
+        #expect(FileManager.default.fileExists(atPath: folder.appending(path: "settings.amogus_TOUMira").path))
+
+        try account(1, name: "mod").write(to: modPlayer, atomically: true, encoding: .utf8)
+        try ModAccountPrimer.seedModSave(save, in: folder)
+        #expect(try String(contentsOf: modPlayer, encoding: .utf8).contains("mod"))
+    }
+
+    @Test func townOfUsHasItsSaveSuffix() {
+        #expect(ModPreset.named("Town of Us: Mira")?.accountSave?.suffix == "_TOUMira")
+        #expect(ModPreset.named("The Other Roles")?.accountSave == nil)
     }
 }

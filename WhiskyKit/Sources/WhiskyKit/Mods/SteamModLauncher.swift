@@ -204,7 +204,6 @@ public enum SteamModLauncher {
         }
     }
 
-    /// Whether the bottle's Steam client is running.
     /// Points Steam's launch of `appId` at one version of the game: the plain
     /// game, or a mod's copy with its loader override set. The same steps
     /// the home Library takes before a modded launch.
@@ -218,10 +217,13 @@ public enum SteamModLauncher {
             ensureLoaderOverride(gameExecutable: gameExe, bottle: bottle)
         }
         try await prepare(appId: appId, bottle: bottle)
-        await ModAccountPrimer.primeIfNeeded(appId: appId, gameFolder: version.gameFolder, bottle: bottle)
+        await ModAccountPrimer.prepare(
+            appId: appId, gameFolder: version.gameFolder, modName: version.modName, bottle: bottle
+        )
         try select(ModInstaller.mainExecutable(in: copy), appId: appId, bottleURL: bottle.url)
     }
 
+    /// Whether the bottle's Steam client is running.
     public static func isSteamRunning() async -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
