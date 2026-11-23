@@ -163,13 +163,19 @@ final class LibraryModel: ObservableObject {
             // off the main actor, and it needs nothing but the bottle URL.
             let pinned = PinnedLibrarySource.items(inBottleAt: url, settings: bottle.settings)
             let steam = await Task.detached { SteamLibrarySource.entries(inBottleAt: url) }.value
+            let steamGames = SteamLibrary.enumerate(bottleURL: url)
+            let steamPlayed = Dictionary(steamGames.map { ($0.appId, $0.manifest.lastPlayed) }) { $1 }
+                .compactMapValues { $0 }
 
             for item in LibraryCatalogue.merge([pinned, steam]) {
+                let played = lastPlayed(for: item, routed: routed, steamPlayed: steamPlayed)
+                // Home is what you've played; the Steam Library page has the rest.
+                if item.source == .steam, !item.isLauncher, played == nil { continue }
                 built.append(
                     LibraryRow(
                         item: item,
                         bottleName: showBottleName ? bottle.settings.name : nil,
-                        lastPlayed: lastPlayed(for: item, routed: routed)
+                        lastPlayed: played
                     )
                 )
             }
@@ -207,14 +213,14 @@ final class LibraryModel: ObservableObject {
 
     /// When an entry was last started in Whisky.
     private func lastPlayed(
-        for item: LibraryEntry, routed: [Int: Date]
+        for item: LibraryEntry, routed: [Int: Date], steamPlayed: [Int: Date]
     ) -> Date? {
         switch item.launch {
         case let .program(url):
             RunLogStore.load(for: url.lastPathComponent, in: item.bottleURL)
                 .entries.map(\.startTime).max()
         case let .steam(appID):
-            routed[appID]
+            [routed[appID], steamPlayed[appID]].compactMap { $0 }.max() // Whisky's or Steam's own record
         }
     }
 

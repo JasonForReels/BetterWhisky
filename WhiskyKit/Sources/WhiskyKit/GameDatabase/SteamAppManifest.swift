@@ -55,6 +55,16 @@ public struct SteamAppManifest: Equatable, Sendable {
     /// installed before Whisky began recording launches itself. It is written on
     /// exit, so a game that is running still reads as its previous session.
     public let lastPlayed: Date?
+    /// Bytes Steam still has to fetch for the current install or update.
+    public let bytesToDownload: Int64?
+    /// Bytes of that fetched so far.
+    public let bytesDownloaded: Int64?
+
+    /// How far the current download is, when Steam has said how big it is.
+    public var downloadFraction: Double? {
+        guard let total = bytesToDownload, total > 0 else { return nil }
+        return min(1, Double(bytesDownloaded ?? 0) / Double(total))
+    }
 
     /// Whether Steam considers the app fully installed (not downloading,
     /// updating, or partially removed).
@@ -86,6 +96,8 @@ public struct SteamAppManifest: Equatable, Sendable {
         // than an absent key.
         self.lastPlayed = appState["lastplayed"]?.intValue
             .flatMap { $0 > 0 ? Date(timeIntervalSince1970: TimeInterval($0)) : nil }
+        self.bytesToDownload = appState["bytestodownload"]?.stringValue.flatMap(Int64.init)
+        self.bytesDownloaded = appState["bytesdownloaded"]?.stringValue.flatMap(Int64.init)
     }
 
     /// Parses a Steam App ID from ACF/VDF format text.

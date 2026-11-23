@@ -52,6 +52,9 @@ struct LibraryCard: View {
     let launch: () -> Void
     /// Opens the game's mod settings; nil for entries without mods.
     var onSettings: (() -> Void)?
+    var install: LibraryInstallState = .installed
+    /// Replaces the computed subtitle, for pages that describe entries their own way.
+    var detail: String?
 
     @State private var icon: Image?
     @State private var artwork: Image?
@@ -115,6 +118,7 @@ struct LibraryCard: View {
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.16)) { isHovering = hovering }
         }
+        .animation(.easeInOut(duration: 0.5), value: install)
         .task(id: item.id) {
             await loadLogo()
             await loadIcon()
@@ -154,6 +158,8 @@ struct LibraryCard: View {
                 .fill(.quaternary.opacity(isActive ? 1 : 0.7))
             // On hover the logo comes forward, lifted off the card by its shadow.
             logo
+                .opacity(install.artOpacity(active: isActive))
+                .saturation(install.artSaturation(active: isActive))
                 .padding(.horizontal, 44)
                 .padding(.vertical, 28)
                 .scaleEffect(isActive ? 1.1 : 1)
@@ -180,6 +186,8 @@ struct LibraryCard: View {
                         artwork
                             .resizable()
                             .scaledToFill()
+                            .opacity(install.artOpacity(active: isActive))
+                            .saturation(install.artSaturation(active: isActive))
                     }
                     .clipped()
                     .overlay {
@@ -235,6 +243,15 @@ struct LibraryCard: View {
     /// The top-right corner: what it is doing, or the offer to start it.
     @ViewBuilder
     private var statusView: some View {
+        if install.isInstalled {
+            runStatusView
+        } else {
+            LibraryInstallIndicator(install: install, isActive: isActive)
+        }
+    }
+
+    @ViewBuilder
+    private var runStatusView: some View {
         switch state {
         case .launching:
             ProgressView()
@@ -296,6 +313,7 @@ struct LibraryCard: View {
     /// Source first when it is not a pin, because "Steam" tells you why an entry
     /// is here at all, and a pin needs no explanation.
     private var subtitle: String {
+        if let detail { return detail }
         var parts: [String] = []
         if item.isLauncher {
             parts.append(String(localized: "library.card.launcher"))
@@ -341,7 +359,7 @@ struct LibraryCard: View {
     }
 }
 
-private extension View {
+extension View {
     /// Liquid Glass where the system has it, a plain material where it does not.
     /// The affordance matters more than the material, so the older path is a
     /// real control rather than nothing.
