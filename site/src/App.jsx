@@ -7,6 +7,33 @@ const DMG = `${REPO}/releases/download/v${VERSION}/BetterWhisky-${VERSION}.dmg`
 const statement =
   'Paste a GitHub link. Press Play. BetterWhisky finds the right release, reads the install steps, keeps the game version the mod needs, and starts it through Steam so you stay signed in.'
 
+const tour = [
+  {
+    img: '/images/app-search.png',
+    title: 'Search everything at once.',
+    body: 'One field finds games, mods and the bottles they live in.',
+    alt: 'The Search tab, filtering for Among Us',
+  },
+  {
+    img: '/images/app-bottles.png',
+    title: 'Bottles, at a glance.',
+    body: 'Each bottle shows its Windows, Wine and graphics setup, and whether anything is running.',
+    alt: 'The Bottles tab with the Among Us bottle',
+  },
+  {
+    img: '/images/app-bottle.png',
+    title: 'One page per bottle.',
+    body: 'Pinned programs first, then everything you can change. Run and the rest sit in the toolbar.',
+    alt: 'The Among Us bottle with Steam pinned',
+  },
+  {
+    img: '/images/app-configuration.png',
+    title: 'Settings like System Settings.',
+    body: 'Eight clear categories instead of one long page, with the Windows tools a click away.',
+    alt: 'Bottle Configuration with its eight categories',
+  },
+]
+
 const showcase = [
   {
     eyebrow: 'Library',
@@ -68,7 +95,7 @@ export default function App() {
             </div>
           </div>
           <div className="hero-device">
-            <img src="/images/library.png" alt="BetterWhisky Library" />
+            <img src="/images/app-library.png" alt="BetterWhisky Library under the Library, Bottles and Search tabs" />
           </div>
         </div>
       </section>
@@ -102,6 +129,23 @@ export default function App() {
               {showcase.map((s, i) => <img key={s.img} data-i={i} src={s.img} alt={s.alt} />)}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 3b. Tour: full-window screenshots of the app */}
+      <section id="tour" className="tour">
+        <p className="eyebrow" data-reveal>A closer look</p>
+        <h2 className="huge" data-reveal>Built the way<br />a Mac app should be.</h2>
+        <div className="tour-grid">
+          {tour.map((t, i) => (
+            <figure key={t.img} data-reveal style={{ '--d': `${(i % 2) * 120}ms` }}>
+              <img src={t.img} alt={t.alt} loading="lazy" />
+              <figcaption>
+                <h3>{t.title}</h3>
+                <p>{t.body}</p>
+              </figcaption>
+            </figure>
+          ))}
         </div>
       </section>
 

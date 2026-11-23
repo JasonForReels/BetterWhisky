@@ -235,3 +235,20 @@ footer {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   [data-reveal] { opacity: 1; transform: none; }
 }
+
+/* ---------- 3b. Tour ---------- */
+.tour { padding: 18vh 6vw 10vh; max-width: 1280px; margin: 0 auto; }
+.tour .huge { margin-bottom: 64px; }
+.tour-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 56px 40px; }
+.tour-grid figure { margin: 0; }
+.tour-grid img {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 30px 60px -24px #000;
+}
+.tour-grid figcaption { margin-top: 20px; }
+.tour-grid h3 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.02em; }
+.tour-grid p { margin: 0; color: var(--muted); font-size: 17px; }
+@media (max-width: 760px) {
+  .tour-grid { grid-template-columns: 1fr; gap: 40px; }
+}
