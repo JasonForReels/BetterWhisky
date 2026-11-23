@@ -33,6 +33,8 @@ struct SteamLibraryView: View {
     @State private var search = ""
     @State private var uninstallTarget: SteamLibraryRow?
     @State private var modsProgram: Program?
+    /// A game with mods installed, waiting for the person to pick a version.
+    @State private var playChoice: SteamLibraryRow?
 
     private var visible: [SteamLibraryRow] {
         model.visibleRows(filter: filter, sort: sort, search: search)
@@ -74,6 +76,17 @@ struct SteamLibraryView: View {
         .sheet(item: $modsProgram, onDismiss: { Task { await model.rebuild() } }, content: { program in
             ModPickerSheet(program: program)
         })
+        .confirmationDialog(
+            "Play \(playChoice?.game.name ?? "")",
+            isPresented: Binding(get: { playChoice != nil }, set: { if !$0 { playChoice = nil } }),
+            presenting: playChoice
+        ) { row in
+            ForEach(versions(of: row), id: \.self) { version in
+                Button(version.modName ?? "\(row.game.name) (no mods)") { model.play(row, version: version) }
+            }
+        } message: { _ in
+            Text("Choose which version to start.")
+        }
         .confirmationDialog(
             "Uninstall \(uninstallTarget?.game.name ?? "")?",
             isPresented: Binding(get: { uninstallTarget != nil }, set: { if !$0 { uninstallTarget = nil } }),
@@ -168,9 +181,21 @@ struct SteamLibraryView: View {
         modsProgram = bottle.programs.first { $0.url == exe } ?? Program(url: exe, bottle: bottle)
     }
 
+    /// The plain game, then each installed mod.
+    private func versions(of row: SteamLibraryRow) -> [ModVariant] {
+        guard let url = row.bottleURL,
+              let game = SteamLibrary.enumerate(bottleURL: url).first(where: { $0.appId == row.game.appId })
+        else { return [] }
+        let mods = ModInstaller.installedModFolders(forGame: game.installURL)
+        guard !mods.isEmpty else { return [] }
+        return [ModVariant(gameFolder: game.installURL, modFolder: nil, modName: nil)]
+            + mods.map { ModVariant(gameFolder: game.installURL, modFolder: $0.folder, modName: $0.name) }
+    }
+
     private func primaryAction(_ row: SteamLibraryRow) {
         switch row.install {
-        case .installed: model.play(row)
+        case .installed:
+            if versions(of: row).count > 1 { playChoice = row } else { model.play(row) }
         case .notInstalled: model.install(row)
         case .installing, .uninstalling: break
         }
@@ -366,22 +391,5 @@ struct LibraryInstallIndicator: View {
         .cardGlass(.capsule, interactive: true)
         .opacity(isActive ? 1 : 0.85)
         .transition(.opacity.combined(with: .scale(scale: 0.8)))
-    }
-}
-
-// MARK: - Bottle creation for the Steam Library
-
-extension BottleVM {
-    /// Creates a bottle and waits for it, for flows that need the bottle next
-    /// (the Steam Library making a bottle to install into). Nil if creation
-    /// failed; the failure has already been surfaced the usual way.
-    func createBottleAndWait(named name: String, winVersion: WinVersion = .win10) async -> Bottle? {
-        let location = UserDefaults.standard.url(forKey: "defaultBottleLocation") ?? BottleData.defaultBottleDir
-        let request = BottleCreationRequest(
-            bottleName: name, winVersion: winVersion, bottleURL: location,
-            newBottleDir: location.appending(path: UUID().uuidString)
-        )
-        await createBottleTask(request: request)
-        return bottles.first { $0.url == request.newBottleDir && $0.isAvailable }
     }
 }

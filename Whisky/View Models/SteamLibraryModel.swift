@@ -277,7 +277,9 @@ extension SteamLibraryModel {
 
     // MARK: - Play
 
-    func play(_ row: SteamLibraryRow) {
+    /// Starts the game through Steam. With `version`, Steam is first pointed
+    /// at that version: the plain game (`modFolder` nil) or one mod's copy.
+    func play(_ row: SteamLibraryRow, version: ModVariant? = nil) {
         guard let bottle = bottle(for: row),
               let game = SteamLibrary.enumerate(bottleURL: bottle.url).first(where: { $0.appId == row.game.appId })
         else {
@@ -286,16 +288,21 @@ extension SteamLibraryModel {
         }
         let appId = row.game.appId
         Task {
-            // The game's required components first (vcrun2019 for Among Us's
-            // account sign-in, say); a no-op once they are in the bottle.
+            // The game's required components first; a no-op once present.
             await applyRecommendedSetup(appId: appId, bottle: bottle)
+            do {
+                if let version { try await SteamModLauncher.point(appId: appId, at: version, bottle: bottle) }
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
             let orchestrator = orchestrators[bottle.url] ?? SteamClientOrchestrator(bottle: bottle)
             orchestrators[bottle.url] = orchestrator
             orchestrator.launch(game)
         }
     }
 
-    private func bottle(for row: SteamLibraryRow) -> Bottle? {
+    func bottle(for row: SteamLibraryRow) -> Bottle? {
         bottles.first { $0.url == row.bottleURL }
     }
 

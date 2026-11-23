@@ -223,3 +223,20 @@ struct SteamSetupProgress: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+// MARK: - Bottle creation for the Steam Library
+
+extension BottleVM {
+    /// Creates a bottle and waits for it, for flows that need the bottle next
+    /// (the Steam Library making a bottle to install into). Nil if creation
+    /// failed; the failure has already been surfaced the usual way.
+    func createBottleAndWait(named name: String, winVersion: WinVersion = .win10) async -> Bottle? {
+        let location = UserDefaults.standard.url(forKey: "defaultBottleLocation") ?? BottleData.defaultBottleDir
+        let request = BottleCreationRequest(
+            bottleName: name, winVersion: winVersion, bottleURL: location,
+            newBottleDir: location.appending(path: UUID().uuidString)
+        )
+        await createBottleTask(request: request)
+        return bottles.first { $0.url == request.newBottleDir && $0.isAvailable }
+    }
+}
