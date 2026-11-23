@@ -62,7 +62,7 @@ struct SteamLibraryView: View {
             }
         }
         .task(id: bottleVM.bottles.map(\.url)) {
-            if SteamLibraryModel.setupRequested {
+            if SteamLibraryModel.setupRequested || SteamLibraryModel.debugFreshSetupRequested {
                 SteamLibraryModel.setupRequested = false
                 model.setUpSteam()
             } else if !model.settingUp {

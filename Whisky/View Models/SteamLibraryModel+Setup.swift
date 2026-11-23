@@ -55,6 +55,15 @@ extension SteamLibraryModel {
     /// it appears: the one click is the button that brought you here.
     static var setupRequested = false
 
+    /// The debug switch in ``setupBottle()``, so the page starts the test run itself.
+    static var debugFreshSetupRequested: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "debugSteamSetupFreshBottle")
+        #else
+        false
+        #endif
+    }
+
     /// One click from nothing to a filled Steam Library: makes a bottle,
     /// installs Steam, opens it for sign-in, waits, then brings BetterWhisky
     /// back with the library loaded. Every step that is already done is
@@ -66,9 +75,7 @@ extension SteamLibraryModel {
         Task {
             defer { setupStep = nil }
             do {
-                let bottle = try await provisionBottle { [weak self] status in
-                    self?.setupStep = status == "Installing Steam…" ? .installingSteam : .creatingBottle
-                }
+                let bottle = try await setupBottle()
                 setupStep = .signingIn
                 if SteamAccount.detectSteamID(bottleURLs: [bottle.url]) == nil {
                     try await openSteamForSignIn(in: bottle)
@@ -90,13 +97,39 @@ extension SteamLibraryModel {
         }
     }
 
+    private func setupBottle() async throws -> Bottle {
+        #if DEBUG
+        // For testing the whole flow on a Mac that already has Steam set up:
+        // `defaults write com.thejaysmith.BetterWhisky debugSteamSetupFreshBottle -bool YES`
+        if UserDefaults.standard.bool(forKey: "debugSteamSetupFreshBottle") {
+            UserDefaults.standard.removeObject(forKey: "debugSteamSetupFreshBottle")
+            let name = "Steam (Setup Test)"
+            var made = bottles.first { $0.settings.name == name }
+            if made == nil { made = await BottleVM.shared.createBottleAndWait(named: name) }
+            guard let made else {
+                throw SteamLaunchError.steamNotInstalled
+            }
+            setupStep = .installingSteam
+            try await SteamClientInstaller.install(into: made)
+            return made
+        }
+        #endif
+        return try await provisionBottle { [weak self] status in
+            self?.setupStep = status == "Installing Steam…" ? .installingSteam : .creatingBottle
+        }
+    }
+
     /// Starts Steam with its window showing, which is where sign-in happens.
     private func openSteamForSignIn(in bottle: Bottle) async throws {
         guard let root = SteamLibrary.detectInstall(bottleURL: bottle.url) else {
             throw SteamLaunchError.steamNotInstalled
         }
         try await Wine.prepareBottlePrefix(bottle: bottle)
-        try await Wine.runProgram(at: root.appending(path: "steam.exe"), bottle: bottle)
+        // BetterWhisky warms Steam up hidden in every bottle, so a client may
+        // already be running. A second `steam.exe` then waits on the first
+        // and its window freezes; asking the running one to show itself is
+        // what brings up sign-in. A cold start is told the same.
+        try await Wine.runProgram(at: root.appending(path: "steam.exe"), args: ["steam://open/main"], bottle: bottle)
     }
 
     /// Steam writes `loginusers.vdf` once an account signs in. The first run
