@@ -12,6 +12,19 @@
         <description>BetterWhisky releases</description>
         <language>en</language>
         <item>
+            <title>1.1.0</title>
+            <pubDate>Mon, 23 Nov 2026 16:38:02 +0200</pubDate>
+            <link>https://github.com/JasonForReels/BetterWhisky</link>
+            <sparkle:version>202611231435</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.1.0/BetterWhisky-1.1.0.dmg" length="14259153" type="application/octet-stream" sparkle:edSignature="kuzkavNKEWdJFjU9BEGjJY53yZjZkA7VExGSK9PKnhEg8BbNhALdkLdPFwLgAhKcEQj57bcZ+qef1DNxBODDDw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.1.0/BetterWhisky202611231435-202611230611.delta" sparkle:deltaFrom="202611230611" length="1459090" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="ebTyPtk3mg6P7ii9O4y3IK+Qdx7D42kWgxeyPrQUItM+DuvMJ4e0ftcTOJoJYk35A+lGug5V8fuQd+rfsEtLDA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.0.0</title>
             <pubDate>Mon, 23 Nov 2026 08:17:10 +0200</pubDate>
             <link>https://github.com/JasonForReels/BetterWhisky</link>
@@ -19,7 +32,7 @@
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.0.0/BetterWhisky-1.0.0.dmg" length="13903342" type="application/octet-stream" sparkle:edSignature="JLxAWAmnpRdQ8aIx7GJ7o+evss3riC+L0uAwXnQ9/o/Nia8HBx4MrzCdTBrkOKQLqxPwYitwd1yVg5FqK6nwDg=="/>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.1.0/BetterWhisky-1.0.0.dmg" length="13903342" type="application/octet-stream" sparkle:edSignature="JLxAWAmnpRdQ8aIx7GJ7o+evss3riC+L0uAwXnQ9/o/Nia8HBx4MrzCdTBrkOKQLqxPwYitwd1yVg5FqK6nwDg=="/>
         </item>
     </channel>
 </rss>
