@@ -52,7 +52,6 @@ public enum SteamClientLibrary {
         guard let root = SteamLibrary.detectInstall(bottleURL: bottleURL) else { return false }
         return SteamAccount.detectSteamID(bottleURLs: [bottleURL]) != nil
             || !librarycacheAppIDs(steamRoot: root).isEmpty
-            || FileManager.default.fileExists(atPath: root.appending(path: "userdata").path(percentEncoded: false))
     }
 
     /// Every App ID the client knows the account has, across `bottleURLs`.

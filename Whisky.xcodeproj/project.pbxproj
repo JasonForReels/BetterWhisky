@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A5B1C2D3E4F50901A9B0F2A6 /* SteamLibraryModel+Setup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */; };
 		A5B1C2D3E4F50901A9B0F2A4 /* SteamLibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */; };
 		A5B1C2D3E4F50901A9B0F2A2 /* SteamLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A1 /* SteamLibraryView.swift */; };
 		12DEDCF97DB77E9F6714B8F1 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61747C7BF48347DA75C30397 /* Cocoa.framework */; };
@@ -211,6 +212,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SteamLibraryModel+Setup.swift"; path = "Whisky/View Models/SteamLibraryModel+Setup.swift"; sourceTree = SOURCE_ROOT; };
 		A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SteamLibraryModel.swift; path = "Whisky/View Models/SteamLibraryModel.swift"; sourceTree = SOURCE_ROOT; };
 		A5B1C2D3E4F50901A9B0F2A1 /* SteamLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SteamLibraryView.swift; path = Whisky/Views/Library/SteamLibraryView.swift; sourceTree = SOURCE_ROOT; };
 		000C327847E981AEF33EFB61 /* InputConfigSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InputConfigSection.swift; sourceTree = "<group>"; };
@@ -601,6 +603,7 @@
 				C4F1A7D2E5B60311A9B0C1D2 /* GameConfigApplyCoordinator.swift */,
 				D7B1C2E3F4A50801A9B0E1F2 /* LibraryModel.swift */,
 				A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */,
+				A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */,
 			);
 			path = "View Models";
 			sourceTree = "<group>";
@@ -1101,6 +1104,7 @@
 				C1A2B3C4E5F60601A9B0C1D8 /* AudioConfigSection.swift in Sources */,
 				C1A2B3C4E5F60601A9B0F2D8 /* LibraryView.swift in Sources */,
 				A5B1C2D3E4F50901A9B0F2A4 /* SteamLibraryModel.swift in Sources */,
+				A5B1C2D3E4F50901A9B0F2A6 /* SteamLibraryModel+Setup.swift in Sources */,
 				A5B1C2D3E4F50901A9B0F2A2 /* SteamLibraryView.swift in Sources */,
 				C1A2B3C4E5F60601A9B0F1D8 /* LibraryCard.swift in Sources */,
 				C1A2B3C4E5F60601A9B0D1D8 /* DiscordConfigSection.swift in Sources */,

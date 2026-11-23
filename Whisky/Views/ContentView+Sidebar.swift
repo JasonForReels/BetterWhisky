@@ -66,7 +66,7 @@ struct TopTabBar: View {
 extension ContentView {
     @ViewBuilder
     var page: some View {
-        if bottlesLoaded, bottleVM.countActive() == 0 {
+        if bottlesLoaded, bottleVM.countActive() == 0, tab != .steamLibrary {
             createFirstBottle
         } else {
             switch tab {
@@ -92,10 +92,15 @@ extension ContentView {
         ContentUnavailableView {
             Label("main.createFirst", systemImage: "shippingbox")
         } actions: {
+            // The one click: makes the bottle, installs Steam and opens it.
+            Button("Set Up Steam", systemImage: "arrow.down.circle") {
+                SteamLibraryModel.setupRequested = true
+                tab = .steamLibrary
+            }
+            .buttonStyle(.borderedProminent)
             Button("button.createBottle", systemImage: "plus") {
                 showBottleCreation.toggle()
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 

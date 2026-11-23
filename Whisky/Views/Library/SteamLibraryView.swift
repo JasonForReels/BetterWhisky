@@ -41,13 +41,11 @@ struct SteamLibraryView: View {
         Group {
             switch model.connection {
             case .unknown, .loading:
-                VStack(spacing: 10) {
-                    ProgressView()
-                    if let status = model.setupStatus {
-                        Text(status).foregroundStyle(.secondary)
-                    }
+                if let step = model.setupStep {
+                    SteamSetupProgress(step: step)
+                } else {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .needsAccount:
                 connectPrompt(nil)
             case let .failed(message) where model.rows.isEmpty:
@@ -63,7 +61,14 @@ struct SteamLibraryView: View {
                 }
             }
         }
-        .task(id: bottleVM.bottles.map(\.url)) { await model.reload() }
+        .task(id: bottleVM.bottles.map(\.url)) {
+            if SteamLibraryModel.setupRequested {
+                SteamLibraryModel.setupRequested = false
+                model.setUpSteam()
+            } else if !model.settingUp {
+                await model.reload()
+            }
+        }
         .onDisappear { model.stopPolling() }
         .confirmationDialog(
             "Uninstall \(uninstallTarget?.game.name ?? "")?",

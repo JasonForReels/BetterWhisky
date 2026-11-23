@@ -41,12 +41,13 @@ final class SteamLibraryModel: ObservableObject {
     }
 
     @Published private(set) var rows: [SteamLibraryRow] = []
-    @Published private(set) var connection: Connection = .unknown
+    @Published var connection: Connection = .unknown
     @Published var errorMessage: String?
     /// What an install that is still setting up is doing, by App ID.
     @Published fileprivate(set) var preparing: [Int: String] = [:]
-    @Published private(set) var setupStatus: String?
-    private var settingUp = false
+    /// Where a one-click Steam setup is, nil when none is running.
+    @Published var setupStep: SteamSetupStep?
+    var settingUp: Bool { setupStep != nil }
 
     private var owned: [SteamOwnedGame] = []
     /// Installs and uninstalls Steam is working on, polled until they settle.
@@ -69,7 +70,7 @@ final class SteamLibraryModel: ObservableObject {
             urls.contains { SteamClientLibrary.isSignedIn(bottleURL: $0) }
         }.value
         guard signedIn else {
-            connection = settingUp ? .loading : .needsAccount
+            connection = .needsAccount
             return
         }
         if owned.isEmpty { connection = .loading }
@@ -90,35 +91,6 @@ final class SteamLibraryModel: ObservableObject {
         recordFirstSeen(owned)
         await rebuild()
         await cacheArtwork()
-    }
-
-    /// First run: makes a Steam bottle, installs Steam, and opens it so the
-    /// person can sign in. The page fills in once they have.
-    func setUpSteam() {
-        guard !settingUp else { return }
-        settingUp = true
-        connection = .loading
-        Task {
-            defer { settingUp = false }
-            do {
-                let bottle = try await provisionBottle { [weak self] in self?.setupStatus = $0 }
-                setupStatus = "Sign in to Steam to see your games…"
-                if let root = SteamLibrary.detectInstall(bottleURL: bottle.url) {
-                    try await Wine.prepareBottlePrefix(bottle: bottle)
-                    try await Wine.runProgram(at: root.appending(path: "steam.exe"), bottle: bottle)
-                }
-                // Steam writes its library cache as the sign-in finishes.
-                for _ in 0 ..< 120 {
-                    try? await Task.sleep(for: .seconds(5))
-                    if SteamClientLibrary.isSignedIn(bottleURL: bottle.url),
-                       !SteamClientLibrary.ownedAppIDs(bottleURLs: [bottle.url]).isEmpty { break }
-                }
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-            setupStatus = nil
-            await reload()
-        }
     }
 
     /// Re-reads every bottle's manifests and rebuilds the rows. Cheap enough
