@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A5B1C2D3E4F50901A9B0F2A6 /* SteamLibraryModel+Setup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */; };
+		A5B1C2D3E4F50901A9B0F2A4 /* SteamLibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */; };
+		A5B1C2D3E4F50901A9B0F2A2 /* SteamLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B1C2D3E4F50901A9B0F2A1 /* SteamLibraryView.swift */; };
 		12DEDCF97DB77E9F6714B8F1 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61747C7BF48347DA75C30397 /* Cocoa.framework */; };
 		160B41C4006351293AAEEF27 /* LauncherConfigSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27C1F7764AE4F0AED2FD03D /* LauncherConfigSection.swift */; };
 		1A2B3C4D2E0107F000AABBCC /* TextTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4E2E0107F000AABBCC /* TextTable.swift */; };
@@ -209,6 +212,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SteamLibraryModel+Setup.swift"; path = "Whisky/View Models/SteamLibraryModel+Setup.swift"; sourceTree = SOURCE_ROOT; };
+		A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SteamLibraryModel.swift; path = "Whisky/View Models/SteamLibraryModel.swift"; sourceTree = SOURCE_ROOT; };
+		A5B1C2D3E4F50901A9B0F2A1 /* SteamLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SteamLibraryView.swift; path = Whisky/Views/Library/SteamLibraryView.swift; sourceTree = SOURCE_ROOT; };
 		000C327847E981AEF33EFB61 /* InputConfigSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InputConfigSection.swift; sourceTree = "<group>"; };
 		1A2B3C4E2E0107F000AABBCC /* TextTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextTable.swift; sourceTree = "<group>"; };
 		1C3B8A506869998F3FE0FC74 /* WhiskyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WhiskyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -468,6 +474,7 @@
 			children = (
 				C1A2B3C4E5F60601A9B0C1D9 /* AudioConfigSection.swift */,
 				C1A2B3C4E5F60601A9B0F2D9 /* LibraryView.swift */,
+				A5B1C2D3E4F50901A9B0F2A1 /* SteamLibraryView.swift */,
 				C1A2B3C4E5F60601A9B0F1D9 /* LibraryCard.swift */,
 				C1A2B3C4E5F60601A9B0D1D9 /* DiscordConfigSection.swift */,
 				6E40498029CCA8B0006E3F1B /* BottleView.swift */,
@@ -595,6 +602,8 @@
 				B1A2C3D4E5F60302A9B0C1D2 /* ProcessesViewModel.swift */,
 				C4F1A7D2E5B60311A9B0C1D2 /* GameConfigApplyCoordinator.swift */,
 				D7B1C2E3F4A50801A9B0E1F2 /* LibraryModel.swift */,
+				A5B1C2D3E4F50901A9B0F2A3 /* SteamLibraryModel.swift */,
+				A5B1C2D3E4F50901A9B0F2A5 /* SteamLibraryModel+Setup.swift */,
 			);
 			path = "View Models";
 			sourceTree = "<group>";
@@ -1094,6 +1103,9 @@
 				C1A2B3C4E5F60601A9B0C1D6 /* AudioFindingsView.swift in Sources */,
 				C1A2B3C4E5F60601A9B0C1D8 /* AudioConfigSection.swift in Sources */,
 				C1A2B3C4E5F60601A9B0F2D8 /* LibraryView.swift in Sources */,
+				A5B1C2D3E4F50901A9B0F2A4 /* SteamLibraryModel.swift in Sources */,
+				A5B1C2D3E4F50901A9B0F2A6 /* SteamLibraryModel+Setup.swift in Sources */,
+				A5B1C2D3E4F50901A9B0F2A2 /* SteamLibraryView.swift in Sources */,
 				C1A2B3C4E5F60601A9B0F1D8 /* LibraryCard.swift in Sources */,
 				C1A2B3C4E5F60601A9B0D1D8 /* DiscordConfigSection.swift in Sources */,
 				C1A2B3C4E5F60601A9B0C2D0 /* AudioTroubleshootingWizardView.swift in Sources */,

@@ -96,11 +96,15 @@ public struct ModPreset: Codable, Hashable, Sendable, Identifiable {
     public var launch: ModLaunchMethod
     /// The mod's logo, as a path in its repository, shown on its Library card.
     public var logoPath: String?
+    /// Where the mod keeps its own copy of the game's account save, when it
+    /// can't sign in without one. See ``ModAccountSave``.
+    public var accountSave: ModAccountSave?
 
     public init(
         name: String, repo: String, gameExecutables: [String], assetPattern: String,
         install: ModInstallRule, requires: [String] = [], notes: String? = nil,
-        steamAppId: Int? = nil, launch: ModLaunchMethod = .direct, logoPath: String? = nil
+        steamAppId: Int? = nil, launch: ModLaunchMethod = .direct, logoPath: String? = nil,
+        accountSave: ModAccountSave? = nil
     ) {
         self.name = name
         self.repo = repo
@@ -112,6 +116,7 @@ public struct ModPreset: Codable, Hashable, Sendable, Identifiable {
         self.steamAppId = steamAppId
         self.launch = launch
         self.logoPath = logoPath
+        self.accountSave = accountSave
     }
 
     public func matches(executable url: URL) -> Bool {
@@ -151,7 +156,8 @@ public extension ModPreset {
             assetPattern: #"-x64-Steam-Epic-MsStore\.zip$"#,
             install: ModInstallRule(mode: .extract, frozenCopy: true),
             notes: "Ships with BepInEx. The first launch can take a few minutes.",
-            steamAppId: 945360, launch: .steam, logoPath: "Images/Logo.png"
+            steamAppId: 945360, launch: .steam, logoPath: "Images/Logo.png",
+            accountSave: .amongUs(suffix: "_TOUMira")
         ),
         ModPreset(
             name: "The Other Roles",
@@ -163,6 +169,11 @@ public extension ModPreset {
             steamAppId: 945360, launch: .steam
         )
     ]
+
+    /// The built-in preset with this name, if any.
+    public static func named(_ name: String?) -> ModPreset? {
+        builtIn.first { $0.name == name }
+    }
 
     static func presets(for executable: URL) -> [ModPreset] {
         builtIn.filter { $0.matches(executable: executable) }

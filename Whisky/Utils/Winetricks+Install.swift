@@ -103,7 +103,8 @@ extension Winetricks {
     private static func configureInstallProcess(
         verb: String,
         bottleURL: URL,
-        resourcesURL: URL
+        resourcesURL: URL,
+        syncEnvironment: [String: String]
     ) -> Process {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -119,7 +120,7 @@ extension Winetricks {
                 "/bin"
             ].joined(separator: ":"),
             "HOME": NSHomeDirectory()
-        ]
+        ].merging(syncEnvironment) { current, _ in current }
         return process
     }
 
@@ -164,7 +165,16 @@ extension Winetricks {
             return
         }
 
-        let process = configureInstallProcess(verb: verb, bottleURL: bottleURL, resourcesURL: resourcesURL)
+        // The bottle's own sync mode. A wineserver already running for the
+        // bottle (Steam, a game) refuses Wine processes started with another
+        // one, and winetricks then fails at its first `wine` call.
+        let syncEnvironment = await MainActor.run {
+            Wine.constructWineEnvironment(for: bottle, environment: [:])
+                .filter { ["WINEESYNC", "WINEMSYNC", "WINEFSYNC"].contains($0.key) }
+        }
+        let process = configureInstallProcess(
+            verb: verb, bottleURL: bottleURL, resourcesURL: resourcesURL, syncEnvironment: syncEnvironment
+        )
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe

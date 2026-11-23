@@ -44,6 +44,7 @@ struct ContentView: View {
     var body: some View {
         page
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay { FirstLaunchOverlay() }
         // The tabs are the window's title, so the text title stays empty.
         // Removing the title outright also took the toolbar's drag area with
         // it, and the window could no longer be moved.
@@ -284,5 +285,50 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+/// Covers the window during a mod's one-time account setup, the first time
+/// it is started in a bottle, so the minute it takes doesn't look like a hang.
+private struct FirstLaunchOverlay: View {
+    @ObservedObject private var firstLaunch = ModFirstLaunch.shared
+    /// About how long the hidden sign-in takes.
+    private let expected: TimeInterval = 75
+
+    var body: some View {
+        if let name = firstLaunch.modName {
+            ZStack {
+                Rectangle().fill(.black.opacity(0.35)).ignoresSafeArea()
+                VStack(spacing: 16) {
+                    if firstLaunch.needsPerson {
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .font(.system(size: 34)).foregroundStyle(.tint)
+                    } else {
+                        ProgressView().controlSize(.large)
+                    }
+                    Text("Getting \(name) Ready").font(.title2.weight(.semibold))
+                    Text(firstLaunch.detail)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !firstLaunch.needsPerson {
+                        TimelineView(.periodic(from: .now, by: 1)) { context in
+                            ProgressView(value: fraction(at: context.date))
+                                .frame(width: 260)
+                        }
+                    }
+                }
+                .padding(32)
+                .frame(width: 380)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            }
+            .transition(.opacity)
+        }
+    }
+
+    /// Fills toward 95% over the expected time, then waits for the real end.
+    private func fraction(at date: Date) -> Double {
+        guard let start = firstLaunch.startedAt else { return 0 }
+        return min(0.95, date.timeIntervalSince(start) / expected)
     }
 }

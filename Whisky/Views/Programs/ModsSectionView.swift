@@ -451,9 +451,27 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     await preset.downloadLogo(into: result.gameFolder.deletingLastPathComponent())
                 }
                 finished(result, notes: notes)
+                await connectAccount(forMod: name)
             } catch {
                 message = error.localizedDescription
             }
+        }
+    }
+
+    /// The last setup step for mods that need the game's account (Town of
+    /// Us): the plain game's one-time sign-in, so Play opens the mod
+    /// straight away later. Play does it too if this is skipped.
+    private func connectAccount(forMod name: String) async {
+        guard let preset = ModPreset.named(name), preset.accountSave != nil,
+              let appId = preset.steamAppId else { return }
+        busy = "Connecting your game account…"
+        defer { busy = nil }
+        let ready = await ModAccountPrimer.prepare(
+            appId: appId, gameFolder: gameFolder, modName: name, bottle: program.bottle
+        )
+        if !ready {
+            message = (message.map { $0 + " " } ?? "")
+                + "Your game account isn't connected yet; it will be the first time you press Play."
         }
     }
 

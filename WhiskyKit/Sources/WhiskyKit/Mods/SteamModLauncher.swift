@@ -161,11 +161,9 @@ public enum SteamModLauncher {
     public static func prepare(appId: Int, bottle: Bottle) async throws {
         try writeScript(appId: appId, bottleURL: bottle.url)
         guard !isLaunchOptionSet(appId: appId, bottleURL: bottle.url) else { return }
-        if await isSteamRunning(), let steam = SteamLibrary.detectInstall(bottleURL: bottle.url) {
-            _ = try? await Wine.runProgram(at: steam.appending(path: "steam.exe"), args: ["-shutdown"], bottle: bottle)
-            for _ in 0..<60 where await isSteamRunning() {
-                try await Task.sleep(for: .seconds(1))
-            }
+        // Only this bottle's client: another bottle's Steam has its own config.
+        if let steam = SteamLibrary.detectInstall(bottleURL: bottle.url) {
+            _ = try? await SteamInstallService.shutDownClient(steamRoot: steam, bottle: bottle)
         }
         try setLaunchOption(appId: appId, bottleURL: bottle.url)
     }
@@ -202,6 +200,31 @@ public enum SteamModLauncher {
             SteamLauncher.startClient(steamExe: steam.appending(path: "steam.exe"), bottle: bottle)
             return
         }
+    }
+
+    /// Points Steam's launch of `appId` at one version of the game: the plain
+    /// game, or a mod's copy with its loader override set. The same steps
+    /// the home Library takes before a modded launch.
+    @MainActor
+    public static func point(appId: Int, at version: ModVariant, bottle: Bottle) async throws {
+        guard let copy = version.modFolder else {
+            try select(nil, appId: appId, bottleURL: bottle.url)
+            return
+        }
+        if let gameExe = ModInstaller.mainExecutable(in: version.gameFolder) {
+            ensureLoaderOverride(gameExecutable: gameExe, bottle: bottle)
+        }
+        // The first modded start in a bottle closes Steam for a moment and
+        // may sign the game in: show the loading screen for all of it.
+        if !isLaunchOptionSet(appId: appId, bottleURL: bottle.url) {
+            ModFirstLaunch.shared.begin(version.modName ?? "the mod")
+            defer { ModFirstLaunch.shared.end() }
+            try await prepare(appId: appId, bottle: bottle)
+        }
+        await ModAccountPrimer.prepare(
+            appId: appId, gameFolder: version.gameFolder, modName: version.modName, bottle: bottle
+        )
+        try select(ModInstaller.mainExecutable(in: copy), appId: appId, bottleURL: bottle.url)
     }
 
     /// Whether the bottle's Steam client is running.

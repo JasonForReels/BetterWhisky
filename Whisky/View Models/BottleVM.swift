@@ -156,14 +156,14 @@ final class BottleVM: ObservableObject {
         return newBottleDir
     }
 
-    private struct BottleCreationRequest {
+    struct BottleCreationRequest {
         let bottleName: String
         let winVersion: WinVersion
         let bottleURL: URL
         let newBottleDir: URL
     }
 
-    private func createBottleTask(request: BottleCreationRequest) async {
+    func createBottleTask(request: BottleCreationRequest) async {
         var bottle: Bottle?
         do {
             // The Wine runtime is required to initialize the prefix; fail fast

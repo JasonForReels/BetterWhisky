@@ -23,9 +23,10 @@ import WhiskyKit
 
 // MARK: - Tabs
 
-/// The three places in the window, picked from the bar at the top.
+/// The places in the window, picked from the bar at the top.
 enum AppTab: String, CaseIterable, Identifiable {
     case library
+    case steamLibrary
     case bottles
     case search
 
@@ -34,6 +35,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .library: "library.title"
+        case .steamLibrary: "Steam Library"
         case .bottles: "sidebar.bottles"
         case .search: "tab.search"
         }
@@ -64,12 +66,14 @@ struct TopTabBar: View {
 extension ContentView {
     @ViewBuilder
     var page: some View {
-        if bottlesLoaded, bottleVM.countActive() == 0 {
+        if bottlesLoaded, bottleVM.countActive() == 0, tab != .steamLibrary {
             createFirstBottle
         } else {
             switch tab {
             case .library:
                 LibraryView(selectedBottle: $selected, refresh: $triggerRefresh)
+            case .steamLibrary:
+                SteamLibraryView()
             case .bottles:
                 if let url = selected, let bottle = bottleVM.bottles.first(where: { $0.url == url }) {
                     BottleView(bottle: bottle, onClose: { selected = nil })
@@ -88,10 +92,15 @@ extension ContentView {
         ContentUnavailableView {
             Label("main.createFirst", systemImage: "shippingbox")
         } actions: {
+            // The one click: makes the bottle, installs Steam and opens it.
+            Button("Set Up Steam", systemImage: "arrow.down.circle") {
+                SteamLibraryModel.setupRequested = true
+                tab = .steamLibrary
+            }
+            .buttonStyle(.borderedProminent)
             Button("button.createBottle", systemImage: "plus") {
                 showBottleCreation.toggle()
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
