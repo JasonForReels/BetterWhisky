@@ -1,81 +1,12 @@
 {
-  "fill-specializations": [
-    {
-      "value": {
-        "automatic-gradient": "srgb:0.97255,0.33725,0.20784,1.00000"
-      }
-    },
-    {
-      "appearance": "dark",
-      "value": "system-dark"
-    }
+  "fill" : { "solid" : "srgb:0.12157,0.16863,0.14118,1.00000" },
+  "groups" : [
+    { "layers" : [ { "glass" : true, "image-name" : "tap.png", "name" : "tap" } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 }, "specular" : true, "translucency" : { "enabled" : false, "value" : 0.5 } },
+    { "layers" : [ { "glass" : false, "image-name" : "hoop.png", "name" : "hoop" } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.4 }, "translucency" : { "enabled" : false, "value" : 0.5 } },
+    { "layers" : [ { "glass" : false, "image-name" : "cask.png", "name" : "cask" } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 }, "translucency" : { "enabled" : false, "value" : 0.5 } }
   ],
-  "groups": [
-    {
-      "blur-material": null,
-      "layers": [
-        {
-          "fill": "none",
-          "glass": false,
-          "image-name": "bg.png",
-          "name": "original-icon",
-          "opacity-specializations": [
-            {
-              "value": 1
-            },
-            {
-              "appearance": "dark",
-              "value": 0
-            }
-          ]
-        }
-      ],
-      "lighting": "individual",
-      "shadow": {
-        "kind": "none",
-        "opacity": 0
-      },
-      "specular": false,
-      "translucency": {
-        "enabled": false,
-        "value": 0.5
-      }
-    },
-    {
-      "blur-material": null,
-      "layers": [
-        {
-          "fill": "none",
-          "glass": true,
-          "image-name": "glass-orange.png",
-          "name": "glass",
-          "opacity-specializations": [
-            {
-              "value": 0
-            },
-            {
-              "appearance": "dark",
-              "value": 1
-            }
-          ]
-        }
-      ],
-      "lighting": "individual",
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.4
-      },
-      "specular": true,
-      "translucency": {
-        "enabled": false,
-        "value": 0.5
-      }
-    }
-  ],
-  "supported-platforms": {
-    "circles": [
-      "watchOS"
-    ],
-    "squares": "shared"
-  }
+  "supported-platforms" : { "circles" : [ "watchOS" ], "squares" : "shared" }
 }

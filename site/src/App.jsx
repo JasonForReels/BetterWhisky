@@ -45,7 +45,7 @@ export default function App() {
   return (
     <>
       <nav className="nav">
-        <span className="brand">BetterWhisky</span>
+        <span className="brand"><img src="/icon-512.png" alt="" width="32" height="32" />BetterWhisky</span>
         <div className="nav-links">
           <a href="#showcase">Overview</a>
           <a href="#speed">Speed</a>
