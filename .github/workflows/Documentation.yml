@@ -6,6 +6,7 @@ on:
     paths:
       - 'WhiskyKit/**'
       - 'dist/pages/**'
+      - 'site/**'
       - '.github/workflows/Documentation.yml'
   workflow_dispatch:
 
@@ -59,7 +60,6 @@ jobs:
             --target WhiskyKit \
             --disable-indexing \
             --transform-for-static-hosting \
-            --hosting-base-path Whisky \
             --output-path ../docs
 
       - name: Stage distribution files
@@ -67,7 +67,21 @@ jobs:
           if [ -d dist/pages ]; then
             cp -R dist/pages/. docs/
           fi
-          ls -la docs/
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build site
+        run: |
+          cd site
+          npm ci
+          npm run build
+          cp -R dist/. ../docs/
+          ls -la ../docs/
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v5
