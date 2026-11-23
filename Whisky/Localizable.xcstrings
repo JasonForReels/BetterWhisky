@@ -35586,6 +35586,94 @@
         }
       }
     },
+    "config.page.audio" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        }
+      }
+    },
+    "config.page.components" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows Components"
+          }
+        }
+      }
+    },
+    "config.page.diagnostics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics & Repair"
+          }
+        }
+      }
+    },
+    "config.page.general" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
+    "config.page.graphics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graphics & Display"
+          }
+        }
+      }
+    },
+    "config.page.input" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controllers & Input"
+          }
+        }
+      }
+    },
+    "config.page.launchers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Game Launchers"
+          }
+        }
+      }
+    },
+    "config.page.performance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Performance"
+          }
+        }
+      }
+    },
     "config.regedit" : {
       "localizations" : {
         "ar" : {
@@ -37062,6 +37150,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重試"
+          }
+        }
+      }
+    },
+    "config.section.tools" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows Tools"
           }
         }
       }
@@ -41227,6 +41326,28 @@
         }
       }
     },
+    "create.choose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose…"
+          }
+        }
+      }
+    },
+    "create.choose.prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        }
+      }
+    },
     "create.create" : {
       "localizations" : {
         "ar" : {
@@ -41371,6 +41492,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "建立"
+          }
+        }
+      }
+    },
+    "create.field.location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        }
+      }
+    },
+    "create.field.name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "create.field.windows" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows"
           }
         }
       }
@@ -41601,6 +41755,17 @@
         }
       }
     },
+    "create.name.prompt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steam Games"
+          }
+        }
+      }
+    },
     "create.path" : {
       "localizations" : {
         "ar" : {
@@ -41745,6 +41910,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "容器路徑："
+          }
+        }
+      }
+    },
+    "create.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A bottle is its own Windows setup on your Mac. Everything you install in it shares its settings."
           }
         }
       }
@@ -41897,6 +42073,17 @@
         }
       }
     },
+    "create.title.new" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Bottle"
+          }
+        }
+      }
+    },
     "create.win" : {
       "localizations" : {
         "ar" : {
@@ -42041,6 +42228,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Windows 版本："
+          }
+        }
+      }
+    },
+    "create.win.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Most games run best on Windows 10. You can change this later."
           }
         }
       }

@@ -114,8 +114,14 @@ final class WhiskyUITestsGameDB: WhiskyUITestCase {
     /// bottle.subtitle.autoBackend, etc.).
     func testNoRawKeysInBottleConfiguration() throws {
         try requireBottleFixture()
-        openBottleConfiguration()
-        let leaks = rawKeyLeaks()
+        openBottleConfigurationList()
+        var leaks = rawKeyLeaks().map { "list: \($0)" }
+        for page in Self.configPages {
+            openConfigPage(page)
+            _ = app.buttons["Back"].firstMatch.waitForExistence(timeout: 3)
+            leaks += rawKeyLeaks().map { "\(page): \($0)" }
+            goBack()
+        }
         XCTAssertTrue(
             leaks.isEmpty,
             "Bottle Configuration leaked raw localization keys: \(leaks)"

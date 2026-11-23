@@ -120,7 +120,6 @@ extension ContentView {
                                 toast: $toast,
                                 style: .card
                             )
-                            .accessibilityIdentifier("sidebar.bottle")
                         }
                     }
                     .id(bottle.url)

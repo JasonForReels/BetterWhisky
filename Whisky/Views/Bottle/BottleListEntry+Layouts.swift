@@ -111,6 +111,12 @@ extension BottleListEntry {
         }
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onTapGesture { selected = bottle.url }
+        // One element for the card, so its identifier is not handed down to
+        // the count and the stop button inside it, which tests then clicked.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(name))
         .accessibilityAddTraits(.isButton)
+        .accessibilityAction { selected = bottle.url }
+        .accessibilityIdentifier("bottles.card")
     }
 }

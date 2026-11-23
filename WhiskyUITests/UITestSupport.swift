@@ -93,19 +93,36 @@ class WhiskyUITestCase: XCTestCase {
         }
     }
 
-    /// Navigate to Bottle Configuration view of the currently-selected bottle.
-    func openBottleConfiguration() {
-        let configRow = require(
-            app.buttons["nav.bottleConfiguration"],
-            "bottle nav row",
-            timeout: 8
-        )
+    /// The Configuration pages, by identifier suffix, in list order.
+    static let configPages = [
+        "general", "graphics", "audio", "input", "launchers", "performance", "components", "diagnostics"
+    ]
+
+    /// Navigate to the category list of the currently-selected bottle's Configuration.
+    func openBottleConfigurationList() {
+        let configRow = require(app.buttons["nav.bottleConfiguration"], "bottle nav row", timeout: 8)
         configRow.click()
-        require(
-            app.staticTexts["Wine"],
-            "Wine section header in Bottle Configuration",
-            timeout: 5
-        )
+        require(app.buttons["config.page.general"], "General row in Configuration", timeout: 5)
+    }
+
+    /// Opens one Configuration page from the category list.
+    func openConfigPage(_ page: String) {
+        let row = require(app.buttons["config.page.\(page)"], "\(page) row in Configuration", timeout: 5)
+        row.click()
+    }
+
+    /// Navigate to the General page of Bottle Configuration, where the Wine
+    /// section lives.
+    func openBottleConfiguration() {
+        openBottleConfigurationList()
+        openConfigPage("general")
+        require(app.staticTexts["Wine"], "Wine section header in Configuration > General", timeout: 5)
+    }
+
+    /// Back out of a pushed page.
+    func goBack() {
+        let back = app.buttons["Back"].firstMatch
+        if back.exists { back.click() }
     }
 
     /// Navigate to Game Configurations view of the currently-selected bottle.
@@ -127,17 +144,28 @@ class WhiskyUITestCase: XCTestCase {
         )
     }
 
+    // MARK: - Tabs
+
+    /// Selects a tab in the title bar's segmented control.
+    func openTab(_ label: String) {
+        let segment = app.radioButtons[label]
+        require(segment, "\(label) tab", timeout: 8)
+        segment.click()
+    }
+
+    func openBottlesTab() { openTab("Bottles") }
+
     // MARK: - Smoke
 
     /// Throws XCTSkip if the user container has no bottles. CI runners start fresh
     /// without fixtures, and most of these tests assume at least one bottle exists.
     func requireBottleFixture() throws {
-        // The app lands on the library now, so a test that wants bottle detail
-        // selects a bottle the way a person would rather than assuming one is
-        // already open.
-        let bottleRow = app.descendants(matching: .any).matching(identifier: "sidebar.bottle").firstMatch
-        if bottleRow.waitForExistence(timeout: 5) {
-            bottleRow.tap()
+        // The app lands on the Library tab, so a test that wants bottle detail
+        // goes to the Bottles tab and opens a bottle the way a person would.
+        openBottlesTab()
+        let bottleCard = app.descendants(matching: .any).matching(identifier: "bottles.card").firstMatch
+        if bottleCard.waitForExistence(timeout: 5) {
+            bottleCard.click()
         }
         if !app.buttons["nav.bottleConfiguration"].waitForExistence(timeout: 5) {
             throw XCTSkip(

@@ -32,71 +32,114 @@ struct BottleCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    @FocusState private var nameFocused: Bool
+
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            header
             Form {
-                TextField("create.name", text: $newBottleName)
-                    .onChange(of: newBottleName) { _, name in
-                        nameValid = !name.isEmpty
-                    }
-                    .accessibilityIdentifier("create.nameField")
+                Section {
+                    TextField("create.field.name", text: $newBottleName, prompt: Text("create.name.prompt"))
+                        .focused($nameFocused)
+                        .onChange(of: newBottleName) { _, name in
+                            nameValid = !name.trimmingCharacters(in: .whitespaces).isEmpty
+                        }
+                        .accessibilityIdentifier("create.nameField")
 
-                Picker("create.win", selection: $newBottleVersion) {
-                    ForEach(WinVersion.allCases.reversed(), id: \.self) {
-                        Text($0.pretty())
-                    }
-                }
-
-                ActionView(
-                    text: "create.path",
-                    subtitle: newBottleURL.prettyPath(),
-                    actionName: "create.browse"
-                ) {
-                    let panel = NSOpenPanel()
-                    panel.canChooseFiles = false
-                    panel.canChooseDirectories = true
-                    panel.allowsMultipleSelection = false
-                    panel.canCreateDirectories = true
-                    panel.directoryURL = BottleData.containerDir
-                    panel.begin { result in
-                        if result == .OK, let url = panel.urls.first {
-                            newBottleURL = url
-                            // Probing here is what makes macOS ask, while the sheet
-                            // is still up and the request has visible cause.
-                            locationIssue = validate(url)
+                    Picker("create.field.windows", selection: $newBottleVersion) {
+                        ForEach(WinVersion.allCases.reversed(), id: \.self) {
+                            Text($0.pretty())
                         }
                     }
+                } footer: {
+                    Text("create.win.footer")
+                        .foregroundStyle(.secondary)
                 }
 
-                if let locationIssue {
-                    locationWarning(locationIssue)
+                Section {
+                    LabeledContent("create.field.location") {
+                        HStack(spacing: 8) {
+                            Text(newBottleURL.prettyPath())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(newBottleURL.prettyPath())
+                            Button("create.choose") { chooseLocation() }
+                        }
+                    }
+                    if let locationIssue {
+                        locationWarning(locationIssue)
+                    }
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("create.title")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("create.cancel") {
-                        dismiss()
-                    }
-                    .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("create.cancelButton")
+            .scrollDisabled(true)
+
+            HStack {
+                Spacer()
+                Button("create.cancel") {
+                    dismiss()
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button("create.create") {
-                        submit()
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!nameValid || locationIssue != nil)
-                    .accessibilityIdentifier("create.createButton")
+                .keyboardShortcut(.cancelAction)
+                .accessibilityIdentifier("create.cancelButton")
+                Button("create.create") {
+                    submit()
                 }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .disabled(!nameValid || locationIssue != nil)
+                .accessibilityIdentifier("create.createButton")
             }
-            .onSubmit {
-                submit()
+            .controlSize(.large)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
+        .onSubmit {
+            if nameValid { submit() }
+        }
+        .onAppear { nameFocused = true }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: ViewWidth.medium)
+    }
+
+    /// What a bottle is, said once, where someone making their first one
+    /// needs it.
+    private var header: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("create.title.new")
+                    .font(.title2.weight(.semibold))
+                Text("create.subtitle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+    }
+
+    private func chooseLocation() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = BottleData.containerDir
+        panel.prompt = String(localized: "create.choose.prompt")
+        panel.begin { result in
+            if result == .OK, let url = panel.urls.first {
+                newBottleURL = url
+                // Probing here is what makes macOS ask, while the sheet
+                // is still up and the request has visible cause.
+                locationIssue = validate(url)
             }
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(width: ViewWidth.small)
     }
 
     @ViewBuilder

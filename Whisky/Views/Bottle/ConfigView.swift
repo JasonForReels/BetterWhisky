@@ -23,31 +23,30 @@ import WhiskyKit
 
 private let logger = Logger(subsystem: Bundle.whiskyBundleIdentifier, category: "ConfigView")
 
-// swiftlint:disable:next type_body_length
 struct ConfigView: View {
     @ObservedObject var bottle: Bottle
-    @State private var buildVersion: String = ""
-    @State private var retinaModeState: RetinaModeState = .unknown
-    @State private var dpiConfig: Int = 96
-    @State private var winVersionLoadingState: LoadingState = .loading
-    @State private var buildVersionLoadingState: LoadingState = .loading
-    @State private var retinaModeLoadingState: LoadingState = .loading
-    @State private var dpiConfigLoadingState: LoadingState = .loading
-    @State private var dpiSheetPresented: Bool = false
-    @State private var showStabilityDiagnostics: Bool = false
-    @State private var stabilityDiagnosticReport: String = ""
-    @State private var exportPresentation: ExportPresentation?
-    @State private var crashPresentation: BottleDiagnosisPresentation?
-    @State private var isRepairingPrefix: Bool = false
-    @State private var prefixRepairResult: PrefixRepairResult?
-    @State private var gameConfigSnapshot: GameConfigSnapshot?
-    @State private var showRevertConfirmation: Bool = false
-    @State private var showTroubleshootingWizard: Bool = false
-    @State private var hasActiveSession: Bool = false
+    @State var buildVersion: String = ""
+    @State var retinaModeState: RetinaModeState = .unknown
+    @State var dpiConfig: Int = 96
+    @State var winVersionLoadingState: LoadingState = .loading
+    @State var buildVersionLoadingState: LoadingState = .loading
+    @State var retinaModeLoadingState: LoadingState = .loading
+    @State var dpiConfigLoadingState: LoadingState = .loading
+    @State var dpiSheetPresented: Bool = false
+    @State var showStabilityDiagnostics: Bool = false
+    @State var stabilityDiagnosticReport: String = ""
+    @State var exportPresentation: ExportPresentation?
+    @State var crashPresentation: BottleDiagnosisPresentation?
+    @State var isRepairingPrefix: Bool = false
+    @State var prefixRepairResult: PrefixRepairResult?
+    @State var gameConfigSnapshot: GameConfigSnapshot?
+    @State var showRevertConfirmation: Bool = false
+    @State var showTroubleshootingWizard: Bool = false
+    @State var hasActiveSession: Bool = false
 
     private let sessionStore = TroubleshootingSessionStore()
 
-    private enum PrefixRepairResult: Identifiable {
+    enum PrefixRepairResult: Identifiable {
         case success
         case failure(String)
 
@@ -59,125 +58,69 @@ struct ConfigView: View {
         }
     }
 
-    @AppStorage("wineSectionExpanded") private var wineSectionExpanded: Bool = true
-    @AppStorage("performanceSectionExpanded") private var performanceSectionExpanded: Bool = true
-    @AppStorage("launcherSectionExpanded") private var launcherSectionExpanded: Bool = false
-    @AppStorage("inputSectionExpanded") private var inputSectionExpanded: Bool = false
-    @AppStorage("dllOverrideSectionExpanded") private var dllOverrideSectionExpanded: Bool = false
-    @AppStorage("cleanupSectionExpanded") private var cleanupSectionExpanded: Bool = false
-
     var body: some View {
         Form {
-            WineConfigSection(
-                bottle: bottle,
-                isExpanded: $wineSectionExpanded,
-                buildVersion: $buildVersion,
-                retinaModeState: $retinaModeState,
-                dpiConfig: dpiBinding,
-                winVersionLoadingState: $winVersionLoadingState,
-                buildVersionLoadingState: $buildVersionLoadingState,
-                retinaModeLoadingState: $retinaModeLoadingState,
-                dpiConfigLoadingState: $dpiConfigLoadingState,
-                dpiSheetPresented: $dpiSheetPresented,
-                onRetryBuildVersion: loadBuildName,
-                onRetryRetinaMode: loadRetinaMode,
-                onRetryDpi: loadDpi
-            )
-            LauncherConfigSection(
-                bottle: bottle,
-                isExpanded: $launcherSectionExpanded,
-                onViewDiagnostics: { loadLatestDiagnosisAndView(onUnavailable: showStabilityReport) }
-            )
-            InputConfigSection(bottle: bottle, isExpanded: $inputSectionExpanded)
-            GraphicsConfigSection(bottle: bottle)
-            AudioConfigSection(bottle: bottle)
-            DiscordConfigSection(bottle: bottle)
-            ResolutionConfigSection(bottle: bottle)
-            PerformanceConfigSection(bottle: bottle, isExpanded: $performanceSectionExpanded)
-            DLLOverrideConfigSection(bottle: bottle, isExpanded: $dllOverrideSectionExpanded)
-            DependencyConfigSection(bottle: bottle)
-            gameConfigRevertSection
-            gameConfigEnvironmentSection
-            Section("Diagnostics") {
-                Text("Analyze Wine crash output for troubleshooting guidance")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if hasActiveSession {
-                    TroubleshootingEntryBanner(bannerType: .resumeSession) {
-                        showTroubleshootingWizard = true
+            Section {
+                ForEach(ConfigPage.allCases) { page in
+                    NavigationLink(value: page) {
+                        ConfigPageLabel(page: page)
                     }
+                    .accessibilityIdentifier("config.page.\(page.rawValue)")
                 }
-
-                Button(String(localized: "troubleshooting.entry.startGuided")) {
-                    showTroubleshootingWizard = true
-                }
-
-                Button("Export Diagnostic Report\u{2026}") {
-                    loadLatestDiagnosisAndExport(onUnavailable: showStabilityReport)
-                }
-                .disabled(bottle.mostRecentlyDiagnosedProgram == nil)
-
-                Button("View Latest Diagnosis") {
-                    loadLatestDiagnosisAndView(onUnavailable: showStabilityReport)
-                }
-                .disabled(bottle.mostRecentlyDiagnosedProgram == nil)
-
-                TroubleshootingHistoryView(
-                    bottleURL: bottle.url,
-                    programURL: nil
-                )
             }
-            Section("Stability") {
-                Button("Generate Stability Diagnostics") {
-                    showStabilityReport()
+            Section("config.section.tools") {
+                toolButton("config.controlPanel", systemImage: "slider.horizontal.3") {
+                    try await Wine.control(bottle: bottle)
                 }
-                .help("Generates a bounded, privacy-safe report for issue triage.")
-
-                Button {
-                    Task {
-                        isRepairingPrefix = true
-                        defer {
-                            bottle.clearWineUsernameCache()
-                            isRepairingPrefix = false
-                        }
-                        do {
-                            try await Wine.repairPrefix(bottle: bottle)
-                            // Validate immediately after repair to confirm directories were created
-                            let result = WinePrefixValidation.validatePrefix(for: bottle)
-                            if result.isValid {
-                                prefixRepairResult = .success
-                            } else {
-                                prefixRepairResult = .failure(
-                                    String(localized: "config.repairPrefix.validationFailed")
-                                )
-                            }
-                        } catch {
-                            prefixRepairResult = .failure(error.localizedDescription)
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("config.repairPrefix")
-                        if isRepairingPrefix {
-                            ProgressView()
-                                .controlSize(.small)
-                                .padding(.leading, 4)
-                        }
-                    }
+                toolButton("config.regedit", systemImage: "list.bullet.indent") {
+                    try await Wine.regedit(bottle: bottle)
                 }
-                .disabled(isRepairingPrefix)
-                .help("config.repairPrefix.help")
+                toolButton("config.winecfg", systemImage: "wrench.and.screwdriver") {
+                    try await Wine.cfg(bottle: bottle)
+                }
             }
-            CleanupConfigSection(bottle: bottle, isExpanded: $cleanupSectionExpanded)
         }
         .formStyle(.grouped)
-        .animation(.whiskyDefault, value: wineSectionExpanded)
-        .animation(.whiskyDefault, value: launcherSectionExpanded)
-        .animation(.whiskyDefault, value: inputSectionExpanded)
-        .animation(.whiskyDefault, value: performanceSectionExpanded)
-        .animation(.whiskyDefault, value: dllOverrideSectionExpanded)
-        .animation(.whiskyDefault, value: cleanupSectionExpanded)
+        .navigationDestination(for: ConfigPage.self) { page in
+            Form { pageContent(page) }
+                .formStyle(.grouped)
+                .navigationTitle(page.title)
+                .modifier(ConfigPresentations(view: self))
+        }
+        .navigationTitle("tab.config")
+        .onAppear {
+            winVersionLoadingState = .success
+
+            loadBuildName()
+            loadRetinaMode()
+            loadDpi()
+
+            gameConfigSnapshot = GameConfigSnapshot.load(from: bottle.url)
+            hasActiveSession = sessionStore.hasActiveSession(for: bottle.url)
+        }
+        .onChange(of: bottle.settings.windowsVersion) { _, newValue in
+            if winVersionLoadingState == .success {
+                winVersionLoadingState = .loading
+                buildVersionLoadingState = .loading
+                Task(priority: .userInitiated) {
+                    do {
+                        try await Wine.changeWinVersion(bottle: bottle, win: newValue)
+                        winVersionLoadingState = .success
+                        bottle.settings.windowsVersion = newValue
+                        loadBuildName()
+                    } catch {
+                        logger.error("Failed to change Windows version: \(error.localizedDescription)")
+                        winVersionLoadingState = .failed
+                    }
+                }
+            }
+        }
+    }
+
+    // swiftlint:disable function_body_length
+    /// The sheets and alerts the Launchers and Diagnostics pages raise.
+    func presentations(_ content: some View) -> some View {
+        content
         .sheet(isPresented: $showTroubleshootingWizard) {
             TroubleshootingWizardView(
                 bottle: bottle,
@@ -230,73 +173,14 @@ struct ConfigView: View {
                 )
             }
         }
-        .bottomBar {
-            HStack {
-                Spacer()
-                Button("config.controlPanel") {
-                    Task(priority: .userInitiated) {
-                        do {
-                            try await Wine.control(bottle: bottle)
-                        } catch {
-                            logger.error("Failed to launch control: \(error.localizedDescription)")
-                        }
-                    }
-                }
-                Button("config.regedit") {
-                    Task(priority: .userInitiated) {
-                        do {
-                            try await Wine.regedit(bottle: bottle)
-                        } catch {
-                            logger.error("Failed to launch regedit: \(error.localizedDescription)")
-                        }
-                    }
-                }
-                Button("config.winecfg") {
-                    Task(priority: .userInitiated) {
-                        do {
-                            try await Wine.cfg(bottle: bottle)
-                        } catch {
-                            logger.error("Failed to launch winecfg: \(error.localizedDescription)")
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-        .navigationTitle("tab.config")
-        .onAppear {
-            winVersionLoadingState = .success
-
-            loadBuildName()
-            loadRetinaMode()
-            loadDpi()
-
-            gameConfigSnapshot = GameConfigSnapshot.load(from: bottle.url)
-            hasActiveSession = sessionStore.hasActiveSession(for: bottle.url)
-        }
-        .onChange(of: bottle.settings.windowsVersion) { _, newValue in
-            if winVersionLoadingState == .success {
-                winVersionLoadingState = .loading
-                buildVersionLoadingState = .loading
-                Task(priority: .userInitiated) {
-                    do {
-                        try await Wine.changeWinVersion(bottle: bottle, win: newValue)
-                        winVersionLoadingState = .success
-                        bottle.settings.windowsVersion = newValue
-                        loadBuildName()
-                    } catch {
-                        logger.error("Failed to change Windows version: \(error.localizedDescription)")
-                        winVersionLoadingState = .failed
-                    }
-                }
-            }
-        }
     }
+
+    // swiftlint:enable function_body_length
 
     /// The DPI the sheet edits. It writes from the setter rather than an
     /// `onChange(of: dpiConfig)`, because loading assigns `dpiConfig` too and
     /// that must not write the value it just read back to the registry.
-    private var dpiBinding: Binding<Int> {
+    var dpiBinding: Binding<Int> {
         Binding(
             get: { dpiConfig },
             set: { newValue in
