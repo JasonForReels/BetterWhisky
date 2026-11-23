@@ -165,9 +165,6 @@ On first launch it downloads the Wine runtime (about 480 MB). BetterWhisky uses 
 
 ## Known issues
 
-- **In-app updates** check BetterWhisky's own feed ([`appcast.xml`](appcast.xml)), signed with
-  BetterWhisky's own key. There are no releases yet, so the app reports it is up to date. See
-  [docs/RELEASING.md](docs/RELEASING.md) for how releases are made.
 - **Telemetry** is off unless you opt in during setup; if you do, events go to the upstream
   project's analytics.
 - The Library needs a manual refresh after installing a mod.
