@@ -11,9 +11,75 @@
 
 </div>
 
-<img alt="BetterWhisky Library with Among Us, Town of Us: Mira and Steam" src="./images/screenshots/library.png">
+<p align="center">
+  <a href="https://github.com/JasonForReels/BetterWhisky/releases/latest"><b>Download BetterWhisky for Mac</b></a>
+  · <a href="https://whisky.jasonforreels.com">Website</a>
+</p>
+
+<img alt="BetterWhisky Library with Among Us, Town of Us: Mira and Steam, under the Library, Bottles and Search tabs" src="./images/screenshots/library.png">
 
 *The regular game and each modded version get their own card. Hover a card for Play and mod settings.*
+
+## Install
+
+1. Download `BetterWhisky-<version>.dmg` from the [latest release](https://github.com/JasonForReels/BetterWhisky/releases/latest).
+   It's signed and notarised by Apple.
+2. Open the DMG and drag **BetterWhisky** into **Applications**, then open it from there.
+3. On first launch, BetterWhisky sets itself up: it installs Rosetta 2 if your Mac doesn't have
+   it and downloads the Wine engine (about 480 MB). This happens once.
+
+BetterWhisky updates itself after that. When a new version is out, it offers to install it.
+
+## How to use BetterWhisky
+
+### 1. Make a bottle
+
+A **bottle** is its own Windows setup on your Mac. Games installed in it share its settings.
+
+1. Click **+** at the top right.
+2. Give it a name (for example *Steam Games*), keep **Windows 10** unless a game says otherwise,
+   and click **Create**.
+
+### 2. Install Steam (or any Windows program)
+
+1. Download the Windows installer from the program's site, for example `SteamSetup.exe` from
+   [steampowered.com](https://store.steampowered.com/about/).
+2. Open the **Bottles** tab, click your bottle, then click **▶ Run…** in the toolbar and choose
+   the installer. You can also drag the `.exe` onto the BetterWhisky window.
+3. Follow the installer as you would on Windows.
+
+Installed programs and Steam games appear in the **Library** tab on their own. To keep a program
+handy, pin it: **Bottles** → your bottle → **Pin Program**.
+
+### 3. Play
+
+- In the **Library**, click a game, or hover it and click **▶**. Steam games start through
+  Steam, so you stay signed in.
+- **Search** finds games, mods and bottles as you type.
+- Right-click a card for **Mods…**, **Configure Bottle**, or, for a pinned program,
+  **Show in Finder** and **Remove Pin**.
+
+### 4. Add mods
+
+1. In the **Library**, hover a game that supports mods and click the **gear**, or right-click it
+   and choose **Mods…**.
+2. Pick a built-in mod and click **Install**, or click **Add from GitHub…** and paste the mod's
+   GitHub link. You can also drop a mod's `.zip` or `.dll` onto the sheet.
+3. BetterWhisky shows what it will install before it changes anything. Confirm, and the modded
+   version gets its own card in the Library. Click it to play.
+
+Mods update themselves. To turn one off, update it now, or remove it, use its **⋯** menu in the
+same sheet.
+
+### Change a bottle's settings
+
+**Bottles** → your bottle → **Bottle Configuration**. Settings are grouped like System Settings:
+General (Windows version, Wine), Graphics & Display, Audio, Controllers & Input, Game Launchers,
+Performance, Windows Components and Diagnostics & Repair. Control Panel, Registry Editor and
+Wine Configuration are under **Windows Tools**.
+
+If a game won't start, **Diagnostics & Repair** has a guided troubleshooter and can read the
+game's crash log.
 
 ## What BetterWhisky adds
 
@@ -84,7 +150,7 @@ memory: it saves little and makes games crash.
 
 ## Building
 
-BetterWhisky has no signed releases yet. Build it with Xcode:
+To build BetterWhisky yourself instead of downloading it, use Xcode:
 
 ```sh
 git clone https://github.com/JasonForReels/BetterWhisky.git
