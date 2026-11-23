@@ -1,15 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <!--
   BetterWhisky's update feed, read by the in-app updater (Sparkle).
   No releases yet, so it has no items and the app reports it is up to date.
   Each release adds an <item> signed with BetterWhisky's EdDSA key; replace
   SUPublicEDKey in Whisky/Info.plist with that key's public half first.
 -->
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>BetterWhisky</title>
-    <link>https://github.com/JasonForReels/BetterWhisky</link>
-    <description>BetterWhisky releases</description>
-    <language>en</language>
-  </channel>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>BetterWhisky</title>
+        <link>https://github.com/JasonForReels/BetterWhisky</link>
+        <description>BetterWhisky releases</description>
+        <language>en</language>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Mon, 23 Nov 2026 08:17:10 +0200</pubDate>
+            <link>https://github.com/JasonForReels/BetterWhisky</link>
+            <sparkle:version>202611230611</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.0.0/BetterWhisky-1.0.0.dmg" length="13903342" type="application/octet-stream" sparkle:edSignature="JLxAWAmnpRdQ8aIx7GJ7o+evss3riC+L0uAwXnQ9/o/Nia8HBx4MrzCdTBrkOKQLqxPwYitwd1yVg5FqK6nwDg=="/>
+        </item>
+    </channel>
 </rss>
