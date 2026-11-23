@@ -172,19 +172,6 @@ On first launch it downloads the Wine runtime (about 480 MB). BetterWhisky uses 
   ([frankea/Whisky#248](https://github.com/frankea/Whisky/issues/248)); waiting usually helps.
 - Mods are tested with Among Us (Town of Us: Mira). Other games and mod loaders may need presets.
 
-## Uninstalling
-
-Back up any bottles you want first. Then remove the app and its data:
-
-```sh
-rm -rf ~/Library/Containers/com.thejaysmith.BetterWhisky
-rm -rf ~/Library/Containers/com.thejaysmith.BetterWhisky.WhiskyThumbnail
-rm -rf ~/Library/Application\ Support/com.thejaysmith.BetterWhisky
-rm -rf ~/Library/Caches/com.thejaysmith.BetterWhisky
-rm -rf ~/Library/Logs/com.thejaysmith.BetterWhisky
-rm -f  ~/Library/Preferences/com.thejaysmith.BetterWhisky.plist
-```
-
 ## Everything else from Whisky
 
 BetterWhisky keeps all of frankea/Whisky: the Wine 11.19 engine built from CrossOver's sources,
