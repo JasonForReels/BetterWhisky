@@ -161,6 +161,34 @@ extension SteamLibraryModel {
     }
 }
 
+extension SteamLibraryModel {
+    /// Applies the game's recommended setup from the game database (its
+    /// bottle settings and required components such as `vcrun2019`) and
+    /// waits for it. Skipped when the bottle already has that setup and none
+    /// of its components are missing, so it is cheap to call before Play.
+    func applyRecommendedSetup(appId: Int, bottle: Bottle) async {
+        guard let game = SteamLibrary.enumerate(bottleURL: bottle.url).first(where: { $0.appId == appId }),
+              let exe = ModInstaller.mainExecutable(in: game.installURL) else { return }
+        let program = bottle.programs.first { $0.url == exe } ?? Program(url: exe, bottle: bottle)
+        guard let config = GameConfigApplicator.recommendedConfiguration(for: program) else { return }
+        let applied = GameConfigSnapshot.load(from: bottle.url)?.appliedEntryId == config.entry.id
+        guard !applied || !GameConfigApplicator.missingRecommendedComponents(for: program).isEmpty else { return }
+
+        let coordinator = GameConfigApplyCoordinator.shared
+        preparing[appId] = "Installing required components…"
+        coordinator.start(
+            entry: config.entry, variant: config.variant, bottle: bottle, programURL: exe, installComponents: true
+        )
+        while coordinator.run(in: bottle) != nil {
+            try? await Task.sleep(for: .seconds(2))
+        }
+        preparing[appId] = nil
+        if let toast = coordinator.takeResult(for: config.entry.id, in: bottle), toast.style == .error {
+            errorMessage = toast.message
+        }
+    }
+}
+
 /// The one-click setup's checklist: done steps ticked, the current one
 /// spinning with a line on what is happening.
 struct SteamSetupProgress: View {

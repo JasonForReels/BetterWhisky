@@ -44,7 +44,7 @@ final class SteamLibraryModel: ObservableObject {
     @Published var connection: Connection = .unknown
     @Published var errorMessage: String?
     /// What an install that is still setting up is doing, by App ID.
-    @Published fileprivate(set) var preparing: [Int: String] = [:]
+    @Published var preparing: [Int: String] = [:]
     /// Where a one-click Steam setup is, nil when none is running.
     @Published var setupStep: SteamSetupStep?
     var settingUp: Bool { setupStep != nil }
@@ -284,9 +284,15 @@ extension SteamLibraryModel {
             errorMessage = String(localized: "library.launch.steamGameMissing")
             return
         }
-        let orchestrator = orchestrators[bottle.url] ?? SteamClientOrchestrator(bottle: bottle)
-        orchestrators[bottle.url] = orchestrator
-        orchestrator.launch(game)
+        let appId = row.game.appId
+        Task {
+            // The game's required components first (vcrun2019 for Among Us's
+            // account sign-in, say); a no-op once they are in the bottle.
+            await applyRecommendedSetup(appId: appId, bottle: bottle)
+            let orchestrator = orchestrators[bottle.url] ?? SteamClientOrchestrator(bottle: bottle)
+            orchestrators[bottle.url] = orchestrator
+            orchestrator.launch(game)
+        }
     }
 
     private func bottle(for row: SteamLibraryRow) -> Bottle? {
@@ -328,6 +334,9 @@ extension SteamLibraryModel {
             let timeout: TimeInterval = job.kind == .install ? 6 * 3600 : 300
             if done || Date().timeIntervalSince(job.started) > timeout {
                 pending[appId] = nil
+                if done, job.kind == .install, let bottle = bottles.first(where: { $0.url == job.bottleURL }) {
+                    Task { await applyRecommendedSetup(appId: appId, bottle: bottle) }
+                }
             }
         }
     }
