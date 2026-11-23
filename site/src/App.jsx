@@ -13,7 +13,7 @@ const showcase = [
     title: 'Every mod gets its own card.',
     body: 'The regular game and each modded version sit side by side. Each mod lives in an instant APFS clone of the game, so it takes no extra space until Steam changes the original.',
     img: '/images/library.png',
-    alt: 'BetterWhisky Library with Among Us, Town of Us: Mira and Steam',
+    alt: 'BetterWhisky Library with Among Us, Town of Us: Mira and Steam, under the Library, Bottles and Search tabs',
   },
   {
     eyebrow: 'Mod settings',
