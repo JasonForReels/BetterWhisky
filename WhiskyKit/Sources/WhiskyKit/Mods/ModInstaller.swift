@@ -146,8 +146,7 @@ public enum ModInstaller {
         } else if rule.copyGame {
             gameFolder = try copyGameFolder(gameFolder, for: name)
         }
-        let target = try resolve(rule.subpath, in: gameFolder)
-        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        var target = try resolve(rule.subpath, in: gameFolder)
 
         // Replacing an older copy of the same mod: take it out first.
         if let previous = installedMods(in: gameFolder).first(where: { $0.repo == repo }) {
@@ -168,6 +167,12 @@ public enum ModInstaller {
             try FileManager.default.copyItem(at: file, to: source.appending(path: file.lastPathComponent))
         }
 
+        // A BepInEx plugin packed as a bare .dll in a zip belongs in the plugins
+        // folder; at the game root BepInEx never loads it.
+        if rule.subpath.isEmpty, hasBepInEx(gameFolder), holdsOnlyPlugins(source) {
+            target = gameFolder.appending(path: "BepInEx/plugins")
+        }
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
         let written = try merge(source, into: target, gameFolder: gameFolder, backupKey: safeName(repo))
         let mod = InstalledMod(name: name, repo: repo, version: version, installedAt: Date(), files: written)
         try writeManifest(installedMods(in: gameFolder).filter { $0.repo != repo } + [mod], to: gameFolder)
@@ -271,6 +276,26 @@ public enum ModInstaller {
     }
 
     // MARK: Helpers
+
+    /// Whether an unpacked mod is only plugin files (.dll, with optional .pdb
+    /// or text), with no loader or game folders of its own.
+    static func holdsOnlyPlugins(_ folder: URL) -> Bool {
+        guard let walker = FileManager.default.enumerator(
+            at: folder, includingPropertiesForKeys: [.isRegularFileKey]
+        ) else { return false }
+        var sawDLL = false
+        for case let item as URL in walker {
+            guard (try? item.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+            let name = item.lastPathComponent.lowercased()
+            if ["winhttp.dll", "doorstop_config.ini"].contains(name) { return false }
+            switch item.pathExtension.lowercased() {
+            case "dll": sawDLL = true
+            case "pdb", "txt", "md", "xml", "json": continue
+            default: return false
+            }
+        }
+        return sawDLL
+    }
 
     static func makeParent(of url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

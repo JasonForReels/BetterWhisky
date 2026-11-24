@@ -57,6 +57,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             ForEach(installed.filter { mod in !presets.contains { $0.repo == mod.repo } }) { mod in
                 otherModRow(mod)
             }
+            if let host = extensionHost {
+                ForEach(ModInstaller.installedMods(in: host.folder)
+                    .filter { mod in !presets.contains { $0.repo == mod.repo } }) { mod in
+                    otherModRow(mod, in: host.folder, addOnTo: host.name)
+                }
+            }
             addRow
             if busy != nil || message != nil {
                 statusRow
@@ -65,6 +71,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             Text("Mods")
         }
         .task(id: program.url) { await refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: SteamSignIn.signInNeededNotification)) { note in
+            guard (note.object as? URL) == program.bottle.url else { return }
+            launchRequest = nil
+            message = "Steam isn't signed in. Sign in in the Steam window that opened; "
+                + "the game starts once you're signed in."
+        }
         .sheet(isPresented: $showAddSheet) { addSheet }
         .sheet(item: $launchRequest) { request in
             LaunchProgressView(request: request) { launchRequest = nil }
@@ -156,16 +168,17 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
     }
 
-    private func otherModRow(_ mod: InstalledMod) -> some View {
+    private func otherModRow(_ mod: InstalledMod, in folder: URL? = nil, addOnTo host: String? = nil) -> some View {
         HStack(spacing: 12) {
             modIcon
             VStack(alignment: .leading, spacing: 2) {
                 Text(mod.name)
-                Text("Version \(mod.version)").font(.caption).foregroundStyle(.secondary)
+                Text(host.map { "Version \(mod.version) · add-on for \($0)" } ?? "Version \(mod.version)")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
             Menu {
-                Button("Remove", role: .destructive) { remove(mod) }
+                Button("Remove", role: .destructive) { remove(mod, in: folder) }
             } label: {
                 Image(systemName: "ellipsis")
             }
@@ -190,7 +203,8 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             Button("Add from GitHub…", systemImage: "link") { showAddSheet = true }
                 .disabled(busy != nil)
             Spacer()
-            Label("Drop a .zip or .dll", systemImage: "arrow.down.doc")
+            Label(extensionHost.map { "Drop a .zip or .dll to add to \($0.name)" } ?? "Drop a .zip or .dll",
+                  systemImage: "arrow.down.doc")
                 .font(.caption)
                 .foregroundStyle(dropTargeted ? Color.accentColor : .secondary)
         }
@@ -295,7 +309,33 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     private func describe(_ rule: ModInstallRule) -> String {
         let place = rule.subpath.isEmpty ? "the game folder" : rule.subpath
         let action = rule.mode == .extract ? "Unzip into \(place)" : "Copy the file into \(place)"
+        if let host = extensionHost { return "\(action) of \(host.name)'s copy of the game" }
         return rule.copyGame ? "\(action) of a new copy of the game" : action
+    }
+
+    /// The installed mod that add-ons go into: one with its own copy of the
+    /// game and a BepInEx loader (Town of Us), preferring the one that's on.
+    /// Its BepInEx only loads plugins from its own folder, never the plain game's.
+    private var extensionHost: (name: String, folder: URL)? {
+        let hosts = presets.compactMap { preset -> (name: String, folder: URL)? in
+            guard preset.install.frozenCopy || preset.install.ownFolder,
+                  let current = installedPreset(preset), current.folder != gameFolder,
+                  ModInstaller.hasBepInEx(current.folder) else { return nil }
+            return (preset.name, current.folder)
+        }
+        return hosts.first { isActive($0.folder) } ?? hosts.first
+    }
+
+    /// Where an add-on's files go: the host's folder, with the game's own
+    /// executable name so the installer treats it as the game folder.
+    private func addOnTarget(_ rule: ModInstallRule, fileName: String) -> (rule: ModInstallRule, executable: URL)? {
+        guard let host = extensionHost else { return nil }
+        var rule = rule
+        rule.copyGame = false
+        rule.ownFolder = false
+        rule.frozenCopy = false
+        if fileName.lowercased().hasSuffix(".dll") { rule.subpath = "BepInEx/plugins" }
+        return (rule, host.folder.appending(path: program.url.lastPathComponent))
     }
 
     // MARK: Actions
@@ -442,9 +482,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             busy = "Installing \(name) \(release.tagName)…"
             defer { busy = nil }
             do {
+                // A mod that isn't a preset is an add-on for the installed modded copy, if there is one.
+                let isPreset = presets.contains { $0.repo == repo }
+                let addOn = isPreset ? nil : addOnTarget(rule, fileName: asset.name)
                 let result = try await ModInstaller.install(
                     asset: asset, version: release.tagName, name: name, repo: repo,
-                    rule: rule, gameExecutable: program.url
+                    rule: addOn?.rule ?? rule, gameExecutable: addOn?.executable ?? program.url
                 )
                 let notes = await installDependencies(dependencies, into: result, seen: [repo.lowercased()])
                 if isFrozenCopy(result.gameFolder), let preset = presets.first(where: { $0.repo == repo }) {
@@ -480,7 +523,16 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             busy = "Installing \(file.lastPathComponent)…"
             defer { busy = nil }
             do {
-                finished(try await ModInstaller.installLocal(file: file, gameExecutable: program.url))
+                if let addOn = addOnTarget(
+                    ModInstallRule(mode: file.pathExtension.lowercased() == "zip" ? .extract : .copyFile, subpath: ""),
+                    fileName: file.lastPathComponent
+                ) {
+                    finished(try await ModInstaller.installLocal(
+                        file: file, rule: addOn.rule, gameExecutable: addOn.executable
+                    ))
+                } else {
+                    finished(try await ModInstaller.installLocal(file: file, gameExecutable: program.url))
+                }
             } catch {
                 message = error.localizedDescription
             }
@@ -489,6 +541,14 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
 
     private func finished(_ result: ModInstallResult, notes: [String] = []) {
         useModLoader(in: result)
+        if !presets.contains(where: { $0.repo == result.mod.repo }), let host = extensionHost,
+           host.folder.standardizedFileURL.path == result.gameFolder.standardizedFileURL.path {
+            message = ([
+                "Added \(result.mod.name) to \(host.name). It loads the next time you press Play."
+            ] + notes).joined(separator: " ")
+            Task { await refresh() }
+            return
+        }
         if isFrozenCopy(result.gameFolder) {
             switchOn(result.gameFolder)
             let version = ModInstaller.frozenVersion(result.gameFolder).map { " for Among Us \($0)" } ?? ""
