@@ -169,7 +169,7 @@ public enum SteamLibrarySource: LibrarySource {
             return [plain] + mods.map { mod in
                 let logo = ModPreset.logoURL(modFolder: mod.folder.deletingLastPathComponent())
                 return base.with(
-                    name: "\(game.name) · \(mod.name)",
+                    name: "\(game.name) · \(ModProfiles.displayName(of: mod.folder, modName: mod.name))",
                     idSuffix: ":mod:\(mod.folder.lastPathComponent)",
                     mod: ModVariant(gameFolder: game.installURL, modFolder: mod.folder, modName: mod.name),
                     logoURL: FileManager.default.fileExists(atPath: logo.path(percentEncoded: false)) ? logo : nil

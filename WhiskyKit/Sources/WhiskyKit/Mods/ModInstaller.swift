@@ -62,7 +62,7 @@ public enum ModInstaller {
     /// Installs a mod from a GitHub release asset.
     public static func install( // swiftlint:disable:this function_parameter_count
         asset: GitHubRelease.Asset, version: String, name: String, repo: String,
-        rule: ModInstallRule, gameExecutable: URL, session: URLSession = .shared
+        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil, session: URLSession = .shared
     ) async throws -> ModInstallResult {
         let work = try makeWorkFolder()
         defer { try? FileManager.default.removeItem(at: work) }
@@ -70,7 +70,8 @@ public enum ModInstaller {
         let file = work.appending(path: asset.name)
         try FileManager.default.moveItem(at: downloaded, to: file)
         return try await installFile(
-            file, version: version, name: name, repo: repo, rule: rule, gameExecutable: gameExecutable
+            file, version: version, name: name, repo: repo, rule: rule,
+            gameExecutable: gameExecutable, profile: profile
         )
     }
 
@@ -105,6 +106,7 @@ public enum ModInstaller {
         for relative in mod.files {
             let target = try resolve(relative, in: gameFolder)
             try? fileManager.removeItem(at: target)
+            try? fileManager.removeItem(at: try resolve("\(disabledFolder)/\(relative)", in: gameFolder))
             let saved = backup.appending(path: relative)
             if fileManager.fileExists(atPath: saved.path(percentEncoded: false)) {
                 try makeParent(of: target)
@@ -135,19 +137,19 @@ public enum ModInstaller {
     // swiftlint:disable:next function_parameter_count
     static func installFile(
         _ file: URL, version: String, name: String, repo: String,
-        rule: ModInstallRule, gameExecutable: URL
+        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil
     ) async throws -> ModInstallResult {
         var gameFolder = gameExecutable.deletingLastPathComponent()
         if rule.frozenCopy {
-            gameFolder = try frozenCopy(of: gameFolder, for: name)
+            // Into the named profile's copy, or the mod's own when there's none.
+            gameFolder = try frozenCopy(of: gameFolder, for: profile ?? name)
         } else if rule.ownFolder {
             gameFolder = modFolder(for: name, game: gameFolder)
             try FileManager.default.createDirectory(at: gameFolder, withIntermediateDirectories: true)
         } else if rule.copyGame {
             gameFolder = try copyGameFolder(gameFolder, for: name)
         }
-        let target = try resolve(rule.subpath, in: gameFolder)
-        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        var target = try resolve(rule.subpath, in: gameFolder)
 
         // Replacing an older copy of the same mod: take it out first.
         if let previous = installedMods(in: gameFolder).first(where: { $0.repo == repo }) {
@@ -168,6 +170,12 @@ public enum ModInstaller {
             try FileManager.default.copyItem(at: file, to: source.appending(path: file.lastPathComponent))
         }
 
+        // A BepInEx plugin packed as a bare .dll in a zip belongs in the plugins
+        // folder; at the game root BepInEx never loads it.
+        if rule.subpath.isEmpty, hasBepInEx(gameFolder), holdsOnlyPlugins(source) {
+            target = gameFolder.appending(path: "BepInEx/plugins")
+        }
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
         let written = try merge(source, into: target, gameFolder: gameFolder, backupKey: safeName(repo))
         let mod = InstalledMod(name: name, repo: repo, version: version, installedAt: Date(), files: written)
         try writeManifest(installedMods(in: gameFolder).filter { $0.repo != repo } + [mod], to: gameFolder)

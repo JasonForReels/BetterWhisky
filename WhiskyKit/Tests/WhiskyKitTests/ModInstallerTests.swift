@@ -45,6 +45,39 @@ import Testing
         #expect(assets.filter { preset.matchesAsset(named: $0.name) }.count == 1)
     }
 
+    @Test func zipOfPluginDLLsGoesToBepInExPlugins() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ModAddOn-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let game = root.appending(path: "game")
+        try FileManager.default.createDirectory(
+            at: game.appending(path: "BepInEx/plugins"), withIntermediateDirectories: true
+        )
+        let packed = root.appending(path: "packed/Extension")
+        try FileManager.default.createDirectory(at: packed, withIntermediateDirectories: true)
+        try Data("dll".utf8).write(to: packed.appending(path: "Extension.dll"))
+        let zip = root.appending(path: "Extension.zip")
+        try await ModInstaller.run("/usr/bin/ditto", [
+            "-c", "-k", "--keepParent", packed.path(percentEncoded: false), zip.path(percentEncoded: false)
+        ])
+
+        let result = try await ModInstaller.installLocal(
+            file: zip, rule: ModInstallRule(mode: .extract), gameExecutable: game.appending(path: "Among Us.exe")
+        )
+        #expect(result.mod.files == ["BepInEx/plugins/Extension.dll"])
+        #expect(FileManager.default.fileExists(
+            atPath: game.appending(path: "BepInEx/plugins/Extension.dll").path(percentEncoded: false)
+        ))
+    }
+
+    @Test func zipWithLoaderIsNotTreatedAsPlugins() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "ModLoader-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data().write(to: folder.appending(path: "winhttp.dll"))
+        try Data().write(to: folder.appending(path: "Mod.dll"))
+        #expect(!ModInstaller.holdsOnlyPlugins(folder))
+    }
+
     @Test func readmeExtractToGameFolder() throws {
         let readme = "## Install\nExtract the zip into your Among Us folder. Make a copy of the game folder first."
         let plan = try #require(ModReadmePlanner.plan(readme: readme, release: release(["Mod.zip"])))
