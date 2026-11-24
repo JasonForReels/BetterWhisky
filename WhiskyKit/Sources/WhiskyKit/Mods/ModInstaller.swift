@@ -62,7 +62,7 @@ public enum ModInstaller {
     /// Installs a mod from a GitHub release asset.
     public static func install( // swiftlint:disable:this function_parameter_count
         asset: GitHubRelease.Asset, version: String, name: String, repo: String,
-        rule: ModInstallRule, gameExecutable: URL, session: URLSession = .shared
+        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil, session: URLSession = .shared
     ) async throws -> ModInstallResult {
         let work = try makeWorkFolder()
         defer { try? FileManager.default.removeItem(at: work) }
@@ -70,7 +70,8 @@ public enum ModInstaller {
         let file = work.appending(path: asset.name)
         try FileManager.default.moveItem(at: downloaded, to: file)
         return try await installFile(
-            file, version: version, name: name, repo: repo, rule: rule, gameExecutable: gameExecutable
+            file, version: version, name: name, repo: repo, rule: rule,
+            gameExecutable: gameExecutable, profile: profile
         )
     }
 
@@ -105,6 +106,7 @@ public enum ModInstaller {
         for relative in mod.files {
             let target = try resolve(relative, in: gameFolder)
             try? fileManager.removeItem(at: target)
+            try? fileManager.removeItem(at: try resolve("\(disabledFolder)/\(relative)", in: gameFolder))
             let saved = backup.appending(path: relative)
             if fileManager.fileExists(atPath: saved.path(percentEncoded: false)) {
                 try makeParent(of: target)
@@ -135,11 +137,12 @@ public enum ModInstaller {
     // swiftlint:disable:next function_parameter_count
     static func installFile(
         _ file: URL, version: String, name: String, repo: String,
-        rule: ModInstallRule, gameExecutable: URL
+        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil
     ) async throws -> ModInstallResult {
         var gameFolder = gameExecutable.deletingLastPathComponent()
         if rule.frozenCopy {
-            gameFolder = try frozenCopy(of: gameFolder, for: name)
+            // Into the named profile's copy, or the mod's own when there's none.
+            gameFolder = try frozenCopy(of: gameFolder, for: profile ?? name)
         } else if rule.ownFolder {
             gameFolder = modFolder(for: name, game: gameFolder)
             try FileManager.default.createDirectory(at: gameFolder, withIntermediateDirectories: true)
@@ -276,26 +279,6 @@ public enum ModInstaller {
     }
 
     // MARK: Helpers
-
-    /// Whether an unpacked mod is only plugin files (.dll, with optional .pdb
-    /// or text), with no loader or game folders of its own.
-    static func holdsOnlyPlugins(_ folder: URL) -> Bool {
-        guard let walker = FileManager.default.enumerator(
-            at: folder, includingPropertiesForKeys: [.isRegularFileKey]
-        ) else { return false }
-        var sawDLL = false
-        for case let item as URL in walker {
-            guard (try? item.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
-            let name = item.lastPathComponent.lowercased()
-            if ["winhttp.dll", "doorstop_config.ini"].contains(name) { return false }
-            switch item.pathExtension.lowercased() {
-            case "dll": sawDLL = true
-            case "pdb", "txt", "md", "xml", "json": continue
-            default: return false
-            }
-        }
-        return sawDLL
-    }
 
     static func makeParent(of url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

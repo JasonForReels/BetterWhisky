@@ -82,7 +82,9 @@ struct SteamLibraryView: View {
             presenting: playChoice
         ) { row in
             ForEach(versions(of: row), id: \.self) { version in
-                Button(version.modName ?? "\(row.game.name) (no mods)") { model.play(row, version: version) }
+                Button(version.modFolder.flatMap { folder in version.modName.map {
+                    ModProfiles.displayName(of: folder, modName: $0)
+                } } ?? "\(row.game.name) (no mods)") { model.play(row, version: version) }
             }
         } message: { _ in
             Text("Choose which version to start.")

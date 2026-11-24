@@ -94,7 +94,7 @@ public enum ModAutoUpdater {
         rule.frozenCopy = true
         let result = try await ModInstaller.install(
             asset: asset, version: release.tagName, name: preset.name, repo: preset.repo,
-            rule: rule, gameExecutable: gameExe
+            rule: rule, gameExecutable: gameExe, profile: copy.deletingLastPathComponent().lastPathComponent
         )
         if wasSelected {
             try SteamModLauncher.select(result.executable, appId: game.appId, bottleURL: bottle.url)
