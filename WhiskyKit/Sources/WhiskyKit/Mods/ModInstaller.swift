@@ -159,6 +159,9 @@ public enum ModInstaller {
         let source: URL
         let work = try makeWorkFolder()
         defer { try? FileManager.default.removeItem(at: work) }
+        let loaderFiles = try await installLoader(
+            rule.loader, into: gameFolder, work: work, backupKey: safeName(repo)
+        )
         switch rule.mode {
         case .extract:
             source = try await extract(
@@ -177,7 +180,9 @@ public enum ModInstaller {
         }
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
         let written = try merge(source, into: target, gameFolder: gameFolder, backupKey: safeName(repo))
-        let mod = InstalledMod(name: name, repo: repo, version: version, installedAt: Date(), files: written)
+        let mod = InstalledMod(
+            name: name, repo: repo, version: version, installedAt: Date(), files: loaderFiles + written
+        )
         try writeManifest(installedMods(in: gameFolder).filter { $0.repo != repo } + [mod], to: gameFolder)
         logger.info(
             "Installed \(name, privacy: .public) (\(written.count) files) into \(gameFolder.path, privacy: .public)"
@@ -186,6 +191,19 @@ public enum ModInstaller {
         let executable = rule.ownFolder && !rule.frozenCopy
             ? gameExecutable : gameFolder.appending(path: gameExecutable.lastPathComponent)
         return ModInstallResult(gameFolder: gameFolder, executable: executable, mod: mod)
+    }
+
+    /// Unpacks `loader` into a game folder that has no loader of its own yet.
+    /// Returns the files written, relative to the game folder.
+    static func installLoader(_ loader: URL?, into gameFolder: URL, work: URL, backupKey: String) async throws
+        -> [String] {
+        let existing = gameFolder.appending(path: "winhttp.dll").path(percentEncoded: false)
+        guard let loader, !FileManager.default.fileExists(atPath: existing) else { return [] }
+        let (downloaded, _) = try await URLSession.shared.download(from: loader)
+        let zip = work.appending(path: "loader.zip")
+        try FileManager.default.moveItem(at: downloaded, to: zip)
+        let unpacked = try await extract(zip, into: work.appending(path: "loader"), stripTopFolder: false)
+        return try merge(unpacked, into: gameFolder, gameFolder: gameFolder, backupKey: backupKey)
     }
 
     /// Where a mod with its own folder lives: `<Game> Mods/<Mod>` next to the game.

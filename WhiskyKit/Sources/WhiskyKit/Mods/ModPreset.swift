@@ -44,10 +44,15 @@ public struct ModInstallRule: Codable, Hashable, Sendable {
     /// the real game; the copy stays playable with the mod until the mod
     /// catches up. Steam starts it through ``SteamModLauncher``.
     public var frozenCopy: Bool
+    /// A mod loader to unpack into the game folder first, when the folder has
+    /// none: for mods whose own download only carries the plugin, or carries a
+    /// loader built for another version of the game (LevelImposter's zip has
+    /// the 32-bit BepInEx, and Steam's Among Us is 64-bit).
+    public var loader: URL?
 
     public init(
         mode: Mode, subpath: String = "", stripTopFolder: Bool = true,
-        copyGame: Bool = false, ownFolder: Bool = false, frozenCopy: Bool = false
+        copyGame: Bool = false, ownFolder: Bool = false, frozenCopy: Bool = false, loader: URL? = nil
     ) {
         self.mode = mode
         self.subpath = subpath
@@ -55,6 +60,7 @@ public struct ModInstallRule: Codable, Hashable, Sendable {
         self.copyGame = copyGame
         self.ownFolder = ownFolder
         self.frozenCopy = frozenCopy
+        self.loader = loader
     }
 
     public init(from decoder: Decoder) throws {
@@ -65,6 +71,7 @@ public struct ModInstallRule: Codable, Hashable, Sendable {
         copyGame = try container.decodeIfPresent(Bool.self, forKey: .copyGame) ?? false
         ownFolder = try container.decodeIfPresent(Bool.self, forKey: .ownFolder) ?? false
         frozenCopy = try container.decodeIfPresent(Bool.self, forKey: .frozenCopy) ?? false
+        loader = try container.decodeIfPresent(URL.self, forKey: .loader)
     }
 }
 
@@ -99,13 +106,17 @@ public struct ModPreset: Codable, Hashable, Sendable, Identifiable {
     /// Where the mod keeps its own copy of the game's account save, when it
     /// can't sign in without one. See ``ModAccountSave``.
     public var accountSave: ModAccountSave?
+    /// Other mods (GitHub `owner/name`) installed alongside it, for
+    /// dependencies the README doesn't link on GitHub.
+    public var dependsOn: [String]?
 
     public init(
         name: String, repo: String, gameExecutables: [String], assetPattern: String,
         install: ModInstallRule, requires: [String] = [], notes: String? = nil,
         steamAppId: Int? = nil, launch: ModLaunchMethod = .direct, logoPath: String? = nil,
-        accountSave: ModAccountSave? = nil
+        accountSave: ModAccountSave? = nil, dependsOn: [String]? = nil
     ) {
+        self.dependsOn = dependsOn
         self.name = name
         self.repo = repo
         self.gameExecutables = gameExecutables
@@ -163,11 +174,18 @@ public extension ModPreset {
             name: "LevelImposter",
             repo: "DigiWorm0/LevelImposter",
             gameExecutables: ["Among Us.exe"],
-            // The zip bundles BepInEx and Reactor; LevelImposter.dll alone is for existing setups.
-            assetPattern: #"^LevelImposter\.zip$"#,
-            install: ModInstallRule(mode: .extract, frozenCopy: true),
-            notes: "Custom maps. Ships with BepInEx and Reactor.",
-            steamAppId: 945360, launch: .steam
+            // Its zip carries the 32-bit BepInEx, which Steam's 64-bit game
+            // can't load; so the plugin goes on the matching 64-bit build, and
+            // Reactor comes in as the README's dependency.
+            assetPattern: #"^LevelImposter\.dll$"#,
+            install: ModInstallRule(
+                mode: .copyFile, subpath: "BepInEx/plugins", frozenCopy: true,
+                loader: URL(string: "https://builds.bepinex.dev/projects/bepinex_be/753/"
+                    + "BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.753%2B0d275a4.zip")
+            ),
+            notes: "Custom maps. Runs on BepInEx with Reactor.",
+            steamAppId: 945360, launch: .steam,
+            dependsOn: ["NuclearPowered/Reactor"]
         )
     ]
 

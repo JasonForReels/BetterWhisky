@@ -619,14 +619,20 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     rule.copyGame = rule.copyGame || preset.install.copyGame
                     rule.ownFolder = preset.install.ownFolder
                     rule.frozenCopy = preset.install.frozenCopy
+                    rule.loader = preset.install.loader
                 }
                 if preset.install.frozenCopy,
                    !prepareFrozenCopy(for: preset, release: release, readme: readmeText, folderName: folderName) {
                     return
                 }
+                var dependencies = plan?.dependencies ?? ModDependencies()
+                for repo in preset.dependsOn ?? []
+                where !dependencies.repos.contains(where: { $0.lowercased() == repo.lowercased() }) {
+                    dependencies.repos.append(repo)
+                }
                 install(
                     asset: asset, release: release, name: preset.name, repo: preset.repo,
-                    rule: rule, dependencies: plan?.dependencies ?? ModDependencies(), profile: folderName
+                    rule: rule, dependencies: dependencies, profile: folderName
                 )
             } catch {
                 message = error.localizedDescription
