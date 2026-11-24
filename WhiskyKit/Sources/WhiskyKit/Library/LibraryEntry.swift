@@ -36,6 +36,8 @@ public struct LibrarySourceID: RawRepresentable, Hashable, Sendable, Codable {
     public static let pinned = LibrarySourceID(rawValue: "pinned")
     /// Games installed through the Steam client inside a bottle.
     public static let steam = LibrarySourceID(rawValue: "steam")
+    /// Apps that run next to a game, such as BetterCrewLink (``ModCompanion``).
+    public static let companion = LibrarySourceID(rawValue: "companion")
 }
 
 /// One thing a person can launch, whatever put it there.
@@ -62,6 +64,8 @@ public struct LibraryEntry: Identifiable, Hashable, Sendable {
         case program(URL)
         /// A Steam app, run through the client so Steam sees it as a launch.
         case steam(appID: Int)
+        /// A ``ModCompanion`` app, by repo: started with the arguments it needs under Wine.
+        case companion(repo: String)
     }
 
     public let id: String
@@ -87,6 +91,15 @@ public struct LibraryEntry: Identifiable, Hashable, Sendable {
     public let logoURL: URL?
 
     public var isLauncher: Bool { launcher != nil }
+
+    /// The Windows executable it runs, for entries that run one directly.
+    public var executableURL: URL? {
+        switch launch {
+        case let .program(url): url
+        case .companion: iconURL
+        case .steam: nil
+        }
+    }
 
     public init(
         id: String,
@@ -170,7 +183,11 @@ public enum SteamLibrarySource: LibrarySource {
                 let logo = ModPreset.logoURL(modFolder: mod.folder.deletingLastPathComponent())
                 return base.with(
                     name: "\(game.name) · \(ModProfiles.displayName(of: mod.folder, modName: mod.name))",
-                    idSuffix: ":mod:\(mod.folder.lastPathComponent)",
+                    // Every frozen copy is a folder named `game`, one per mod, so the
+                    // id carries the mod's folder too; two cards sharing an id
+                    // leave one blank and the other mis-sized in the grid.
+                    idSuffix: ":mod:\(mod.folder.deletingLastPathComponent().lastPathComponent)"
+                        + "/\(mod.folder.lastPathComponent)",
                     mod: ModVariant(gameFolder: game.installURL, modFolder: mod.folder, modName: mod.name),
                     logoURL: FileManager.default.fileExists(atPath: logo.path(percentEncoded: false)) ? logo : nil
                 )
@@ -278,13 +295,33 @@ public enum SteamLibrarySource: LibrarySource {
     }
 }
 
+/// Companion apps installed in a bottle, each its own card.
+public enum CompanionLibrarySource: LibrarySource {
+    public static let id = LibrarySourceID.companion
+
+    public static func items(inBottleAt url: URL, settings _: BottleSettings) -> [LibraryEntry] {
+        ModCompanion.builtIn.compactMap { companion in
+            guard let exe = companion.installedExecutable(bottleURL: url) else { return nil }
+            return LibraryEntry(
+                id: "companion:\(url.path(percentEncoded: false)):\(companion.repo)",
+                name: companion.name,
+                iconURL: exe,
+                bottleURL: url,
+                source: id,
+                launch: .companion(repo: companion.repo)
+            )
+        }
+    }
+}
+
 /// Every source, merged.
 public enum LibraryCatalogue {
     /// Registered sources, in the order their entries are produced. Adding a
     /// launcher is this line plus the type.
     public static let sources: [any LibrarySource.Type] = [
         PinnedLibrarySource.self,
-        SteamLibrarySource.self
+        SteamLibrarySource.self,
+        CompanionLibrarySource.self
     ]
 
     /// Everything one bottle contributes to the library.
@@ -316,11 +353,13 @@ public enum LibraryCatalogue {
 }
 
 extension LibraryEntry {
+    /// A mod never borrows the game's logo: a logo-only card would hide the mod's
+    /// name and look like the plain game. Without its own, the card shows its name.
     func with(name: String, idSuffix: String, mod: ModVariant, logoURL: URL? = nil) -> LibraryEntry {
         LibraryEntry(
             id: id + idSuffix, name: name, iconURL: iconURL, artworkURL: artworkURL,
             bottleURL: bottleURL, source: source, launch: launch, launcher: launcher, mod: mod,
-            logoURL: logoURL ?? self.logoURL
+            logoURL: mod.modName == nil ? (logoURL ?? self.logoURL) : logoURL
         )
     }
 }

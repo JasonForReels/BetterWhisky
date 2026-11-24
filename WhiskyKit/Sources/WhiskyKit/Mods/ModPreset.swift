@@ -99,12 +99,15 @@ public struct ModPreset: Codable, Hashable, Sendable, Identifiable {
     /// Where the mod keeps its own copy of the game's account save, when it
     /// can't sign in without one. See ``ModAccountSave``.
     public var accountSave: ModAccountSave?
+    /// Mods that can't share a profile with this one, checked by
+    /// ``ModCompatibility`` before a second mod goes in.
+    public var conflictsWith: [ModConflict]?
 
     public init(
         name: String, repo: String, gameExecutables: [String], assetPattern: String,
         install: ModInstallRule, requires: [String] = [], notes: String? = nil,
         steamAppId: Int? = nil, launch: ModLaunchMethod = .direct, logoPath: String? = nil,
-        accountSave: ModAccountSave? = nil
+        accountSave: ModAccountSave? = nil, conflictsWith: [ModConflict]? = nil
     ) {
         self.name = name
         self.repo = repo
@@ -117,6 +120,7 @@ public struct ModPreset: Codable, Hashable, Sendable, Identifiable {
         self.launch = launch
         self.logoPath = logoPath
         self.accountSave = accountSave
+        self.conflictsWith = conflictsWith
     }
 
     public func matches(executable url: URL) -> Bool {
@@ -157,7 +161,8 @@ public extension ModPreset {
             install: ModInstallRule(mode: .extract, frozenCopy: true),
             notes: "Ships with BepInEx. The first launch can take a few minutes.",
             steamAppId: 945360, launch: .steam, logoPath: "Images/Logo.png",
-            accountSave: .amongUs(suffix: "_TOUMira")
+            accountSave: .amongUs(suffix: "_TOUMira"),
+            conflictsWith: [ModConflict(repo: "TheOtherRolesAU/TheOtherRoles", reason: rolesClash)]
         ),
         ModPreset(
             name: "The Other Roles",
@@ -166,9 +171,13 @@ public extension ModPreset {
             assetPattern: #"^TheOtherRoles\.zip$"#,
             install: ModInstallRule(mode: .extract, frozenCopy: true),
             notes: "Ships with BepInEx. Needs the Among Us version it was built for.",
-            steamAppId: 945360, launch: .steam
+            steamAppId: 945360, launch: .steam,
+            conflictsWith: [ModConflict(repo: "AU-Avengers/TOU-Mira", reason: rolesClash)]
         )
     ]
+
+    /// Two mods that each replace the game's roles and role assignment.
+    private static let rolesClash = "both replace the game's roles, and each takes over role assignment."
 
     /// The built-in preset with this name, if any.
     public static func named(_ name: String?) -> ModPreset? {

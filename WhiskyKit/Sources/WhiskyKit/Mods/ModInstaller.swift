@@ -139,53 +139,13 @@ public enum ModInstaller {
         _ file: URL, version: String, name: String, repo: String,
         rule: ModInstallRule, gameExecutable: URL, profile: String? = nil
     ) async throws -> ModInstallResult {
-        var gameFolder = gameExecutable.deletingLastPathComponent()
-        if rule.frozenCopy {
-            // Into the named profile's copy, or the mod's own when there's none.
-            gameFolder = try frozenCopy(of: gameFolder, for: profile ?? name)
-        } else if rule.ownFolder {
-            gameFolder = modFolder(for: name, game: gameFolder)
-            try FileManager.default.createDirectory(at: gameFolder, withIntermediateDirectories: true)
-        } else if rule.copyGame {
-            gameFolder = try copyGameFolder(gameFolder, for: name)
-        }
-        var target = try resolve(rule.subpath, in: gameFolder)
-
-        // Replacing an older copy of the same mod: take it out first.
-        if let previous = installedMods(in: gameFolder).first(where: { $0.repo == repo }) {
-            try uninstall(previous, from: gameFolder)
-        }
-
-        let source: URL
-        let work = try makeWorkFolder()
-        defer { try? FileManager.default.removeItem(at: work) }
-        switch rule.mode {
-        case .extract:
-            source = try await extract(
-                file, into: work.appending(path: "unpacked"), stripTopFolder: rule.stripTopFolder
-            )
-        case .copyFile:
-            source = work.appending(path: "single")
-            try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: file, to: source.appending(path: file.lastPathComponent))
-        }
-
-        // A BepInEx plugin packed as a bare .dll in a zip belongs in the plugins
-        // folder; at the game root BepInEx never loads it.
-        if rule.subpath.isEmpty, hasBepInEx(gameFolder), holdsOnlyPlugins(source) {
-            target = gameFolder.appending(path: "BepInEx/plugins")
-        }
-        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
-        let written = try merge(source, into: target, gameFolder: gameFolder, backupKey: safeName(repo))
-        let mod = InstalledMod(name: name, repo: repo, version: version, installedAt: Date(), files: written)
-        try writeManifest(installedMods(in: gameFolder).filter { $0.repo != repo } + [mod], to: gameFolder)
-        logger.info(
-            "Installed \(name, privacy: .public) (\(written.count) files) into \(gameFolder.path, privacy: .public)"
+        let gameFolder = try targetFolder(rule: rule, name: name, gameExecutable: gameExecutable, profile: profile)
+        let staged = try await stage(file, rule: rule, gameFolder: gameFolder)
+        defer { discard(staged) }
+        return try installStaged(
+            staged, version: version, name: name, repo: repo, rule: rule,
+            gameExecutable: gameExecutable, gameFolder: gameFolder
         )
-        // A mod in its own folder runs through the game's own executable.
-        let executable = rule.ownFolder && !rule.frozenCopy
-            ? gameExecutable : gameFolder.appending(path: gameExecutable.lastPathComponent)
-        return ModInstallResult(gameFolder: gameFolder, executable: executable, mod: mod)
     }
 
     /// Where a mod with its own folder lives: `<Game> Mods/<Mod>` next to the game.

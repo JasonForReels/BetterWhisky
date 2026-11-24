@@ -45,6 +45,8 @@ struct LibraryView: View {
     var searchText: String = ""
 
     @State private var modsProgram: Program?
+    @State private var aboutAppID: Int?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var bottles: [Bottle] { bottleVM.bottles.filter(\.isAvailable) }
 
@@ -72,6 +74,15 @@ struct LibraryView: View {
         .sheet(item: $modsProgram, onDismiss: { refresh.toggle() }, content: { program in
             ModPickerSheet(program: program)
         })
+        .overlay {
+            if let appID = aboutAppID {
+                GameDetailView(appId: appID) {
+                    withAnimation(.smooth(duration: 0.35)) { aboutAppID = nil }
+                }
+                .id(appID)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
         .sheet(item: $model.launchRequest) { request in
             LaunchProgressView(request: request) { model.launchRequest = nil }
         }
@@ -115,29 +126,95 @@ struct LibraryView: View {
         }
     }
 
+    /// The few games played most recently, biggest first, the way the TV app
+    /// leads with Up Next. Hidden while searching, where it would repeat results.
+    private var recentlyPlayed: [LibraryRow] {
+        guard searchText.isEmpty else { return [] }
+        return model.rows
+            .filter { $0.lastPlayed != nil && !$0.item.isLauncher }
+            .sorted { ($0.lastPlayed ?? .distantPast) > ($1.lastPlayed ?? .distantPast) }
+            .prefix(8)
+            .map { $0 }
+    }
+
+    private func card(_ row: LibraryRow) -> some View {
+        LibraryCard(
+            item: row.item,
+            bottleName: row.bottleName,
+            lastPlayed: row.lastPlayed,
+            state: model.state(for: row.item),
+            launch: { model.launch(row, bottles: bottles) },
+            onSettings: settingsAction(for: row)
+        )
+        .contextMenu { menu(for: row) }
+    }
+
+    /// The game in the banner: the one played last.
+    private var heroRow: LibraryRow? { recentlyPlayed.first }
+
     private var grid: some View {
         ScrollView {
-            LazyVGrid(
-                // 180 rather than 220 so two columns fit at the window's own
-                // minimum width, where the sidebar leaves about 330pt: one
-                // column of landscape cards is a list with wasted space.
-                columns: [GridItem(.adaptive(minimum: 180, maximum: 320), spacing: 14)],
-                spacing: 14
-            ) {
-                ForEach(visible) { row in
-                    LibraryCard(
-                        item: row.item,
-                        bottleName: row.bottleName,
-                        lastPlayed: row.lastPlayed,
-                        state: model.state(for: row.item),
-                        launch: { model.launch(row, bottles: bottles) },
-                        onSettings: settingsAction(for: row)
+            VStack(alignment: .leading, spacing: 32) {
+                if let hero = heroRow {
+                    LibraryHero(
+                        row: hero,
+                        state: model.state(for: hero.item),
+                        play: { model.launch(hero, bottles: bottles) },
+                        stop: { model.stop(hero, bottles: bottles) },
+                        mods: settingsAction(for: hero),
+                        about: aboutAction(for: hero)
                     )
-                    .contextMenu { menu(for: row) }
+                    .contextMenu { menu(for: hero) }
+                    .id("hero-\(hero.id)")
+                    .transition(.opacity)
+                }
+
+                if recentlyPlayed.count > 1 {
+                    LibraryShelf(
+                        title: "Recently Played", systemImage: "clock.arrow.circlepath",
+                        rows: Array(recentlyPlayed.dropFirst())
+                    ) { row in
+                        card(row).frame(width: 280)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Label(searchText.isEmpty ? "All Games" : "Results", systemImage: "square.grid.2x2")
+                            .font(.title2.weight(.semibold))
+                        Text("\(visible.count)")
+                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8).padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
+                            .contentTransition(.numericText())
+                    }
+                    LazyVGrid(
+                        // Small enough that two columns fit at the window's minimum
+                        // width: one column of landscape cards is a list with
+                        // wasted space.
+                        columns: [GridItem(.adaptive(minimum: 200, maximum: 320), spacing: 18)],
+                        spacing: 18
+                    ) {
+                        ForEach(visible) { row in
+                            card(row)
+                                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        }
+                    }
                 }
             }
-            .padding(18)
+            .padding(24)
+            // Sorting, searching and a launch moving a game to the front all
+            // slide cards to their new places instead of jumping.
+            .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: visible.map(\.id))
+            .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: recentlyPlayed.map(\.id))
         }
+        .accessibilityHidden(aboutAppID != nil)
+    }
+
+    private func aboutAction(for row: LibraryRow) -> (() -> Void)? {
+        guard case let .steam(appID) = row.item.launch else { return nil }
+        return { withAnimation(.smooth(duration: 0.4)) { aboutAppID = appID } }
     }
 
     @ViewBuilder
@@ -152,6 +229,9 @@ struct LibraryView: View {
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             }
             Button("library.card.unpin", role: .destructive) { unpin(url, in: row.item.bottleURL) }
+        }
+        if case let .steam(appID) = row.item.launch {
+            Button("About This Game") { withAnimation(.smooth(duration: 0.4)) { aboutAppID = appID } }
         }
         if case let .steam(appID) = row.item.launch, let program = gameProgram(appID, in: row.item.bottleURL) {
             Button("Mods…") { modsProgram = program }

@@ -114,6 +114,8 @@ final class LibraryModel: ObservableObject {
         switch entry.launch {
         case let .program(url):
             programLaunching.contains(url) ? .launching : .idle
+        case .companion:
+            entry.iconURL.map { programLaunching.contains($0) ? .launching : .idle } ?? .idle
         case let .steam(appID):
             // Every version of a modded game shares one App ID; only the one
             // Steam is pointed at is the one running or launching.
@@ -163,11 +165,12 @@ final class LibraryModel: ObservableObject {
             // off the main actor, and it needs nothing but the bottle URL.
             let pinned = PinnedLibrarySource.items(inBottleAt: url, settings: bottle.settings)
             let steam = await Task.detached { SteamLibrarySource.entries(inBottleAt: url) }.value
+            let companions = CompanionLibrarySource.items(inBottleAt: url, settings: bottle.settings)
             let steamGames = SteamLibrary.enumerate(bottleURL: url)
             let steamPlayed = Dictionary(steamGames.map { ($0.appId, $0.manifest.lastPlayed) }) { $1 }
                 .compactMapValues { $0 }
 
-            for item in LibraryCatalogue.merge([pinned, steam]) {
+            for item in LibraryCatalogue.merge([pinned, steam, companions]) {
                 let played = lastPlayed(for: item, routed: routed, steamPlayed: steamPlayed)
                 // Home is what you've played; the Steam Library page has the rest.
                 if item.source == .steam, !item.isLauncher, played == nil { continue }
@@ -216,8 +219,8 @@ final class LibraryModel: ObservableObject {
         for item: LibraryEntry, routed: [Int: Date], steamPlayed: [Int: Date]
     ) -> Date? {
         switch item.launch {
-        case let .program(url):
-            RunLogStore.load(for: url.lastPathComponent, in: item.bottleURL)
+        case .program, .companion:
+            item.executableURL.flatMap { RunLogStore.load(for: $0.lastPathComponent, in: item.bottleURL) }?
                 .entries.map(\.startTime).max()
         case let .steam(appID):
             [routed[appID], steamPlayed[appID]].compactMap { $0 }.max() // Whisky's or Steam's own record
@@ -270,6 +273,12 @@ extension LibraryModel {
         switch row.item.launch {
         case let .program(url):
             launchProgram(at: url, in: bottle)
+        case let .companion(repo):
+            guard let program = ModCompanion.builtIn.first(where: { $0.repo == repo })?.program(in: bottle) else {
+                launchError = "That app isn't installed in this bottle any more."
+                return
+            }
+            launchProgram(at: program.url, in: bottle)
         case let .steam(appID):
             let games = SteamLibrary.enumerate(bottleURL: bottle.url)
             guard let game = games.first(where: { $0.appId == appID }) else {

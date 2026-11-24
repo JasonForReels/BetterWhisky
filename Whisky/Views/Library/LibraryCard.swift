@@ -300,8 +300,10 @@ struct LibraryCard: View {
             return AnyView(Image("SteamLogo").resizable().renderingMode(.template).scaledToFit()
                 .foregroundStyle(.primary))
         }
-        guard let logo else { return nil }
-        return AnyView(logo.resizable().scaledToFit())
+        if let logo { return AnyView(logo.resizable().scaledToFit()) }
+        // Mods and companion apps whose logo ships with the app.
+        if case .companion = item.launch { return Self.bundledLogo(forMod: item.name) }
+        return item.mod?.modName.flatMap(Self.bundledLogo(forMod:))
     }
 
     /// A modded card shows the game's name, with the mod on the line above.
@@ -370,5 +372,20 @@ extension View {
         } else {
             background(.thinMaterial, in: shape)
         }
+    }
+}
+
+extension LibraryCard {
+    /// Logos the app carries for mods, by mod name. LevelImposter's is its
+    /// letters alone, tinted like Steam's so it reads in light and dark.
+    static let bundledModLogos: [String: (name: String, template: Bool)] = [
+        "LevelImposter": ("ModLogo-LevelImposter", true),
+        "BetterCrewLink": ("ModLogo-BetterCrewLink", false)
+    ]
+
+    static func bundledLogo(forMod name: String) -> AnyView? {
+        guard let asset = bundledModLogos[name] else { return nil }
+        return AnyView(Image(asset.name).resizable().renderingMode(asset.template ? .template : .original)
+            .scaledToFit().padding(asset.template ? 10 : 0).foregroundStyle(.primary))
     }
 }

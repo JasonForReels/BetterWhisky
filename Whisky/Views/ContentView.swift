@@ -40,6 +40,8 @@ struct ContentView: View {
     @State var toast: ToastData?
     @State var corruptRegistryBackupURL: URL?
     @State private var updatingRuntime: Bool = false
+    /// Set while a full-page view (a game's store page) wants the window to itself.
+    @State private var hidesTopBar = false
 
     var body: some View {
         page
@@ -52,6 +54,9 @@ struct ContentView: View {
         // No toolbar strip: the tabs and buttons float over the content, which
         // runs up to the top of the window.
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .onPreferenceChange(HidesTopBarKey.self) { hide in
+            withAnimation(.smooth(duration: 0.3)) { hidesTopBar = hide }
+        }
         .toast($toast)
         .onReceive(NotificationCenter.default.publisher(for: .zombieProcessesCleaned)) { _ in
             withAnimation {
@@ -115,6 +120,7 @@ struct ContentView: View {
             ))
         }
         .toolbar {
+          if !hidesTopBar {
             // In the toolbar's own glass platter, at the control's natural
             // size: a forced large size is what pushed the thumb past the
             // platter's right edge.
@@ -161,6 +167,7 @@ struct ContentView: View {
                 }
                 .help(Text("button.refresh"))
             }
+          }
         }
         .sheet(isPresented: $showBottleCreation) {
             BottleCreationView(newlyCreatedBottleURL: $newlyCreatedBottleURL)

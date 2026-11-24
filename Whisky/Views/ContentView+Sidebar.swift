@@ -27,6 +27,7 @@ import WhiskyKit
 enum AppTab: String, CaseIterable, Identifiable {
     case library
     case steamLibrary
+    case store
     case bottles
     case search
 
@@ -36,6 +37,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .library: "library.title"
         case .steamLibrary: "Steam Library"
+        case .store: "Store"
         case .bottles: "sidebar.bottles"
         case .search: "tab.search"
         }
@@ -63,10 +65,19 @@ struct TopTabBar: View {
 
 // MARK: - Pages
 
+/// A page that covers the window, such as a game's store page, sets this so
+/// the window hides its tabs and buttons while it is open.
+struct HidesTopBarKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 extension ContentView {
     @ViewBuilder
     var page: some View {
-        if bottlesLoaded, bottleVM.countActive() == 0, tab != .steamLibrary {
+        if bottlesLoaded, bottleVM.countActive() == 0, tab != .steamLibrary, tab != .store {
             createFirstBottle
         } else {
             switch tab {
@@ -74,6 +85,8 @@ extension ContentView {
                 LibraryView(selectedBottle: $selected, refresh: $triggerRefresh)
             case .steamLibrary:
                 SteamLibraryView()
+            case .store:
+                StoreView()
             case .bottles:
                 if let url = selected, let bottle = bottleVM.bottles.first(where: { $0.url == url }) {
                     BottleView(bottle: bottle, onClose: { selected = nil })
@@ -252,6 +265,7 @@ extension ContentView {
 /// bar this size has to be a text field on the glass rather than that control.
 struct GlassSearchBar: View {
     @Binding var text: String
+    var prompt: LocalizedStringKey = "library.search"
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -259,7 +273,7 @@ struct GlassSearchBar: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(.secondary)
-            TextField("library.search", text: $text)
+            TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 17))
                 .focused($focused)

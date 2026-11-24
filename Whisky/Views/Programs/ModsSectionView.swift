@@ -39,6 +39,11 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     @State private var launchRequest: LaunchRequest?
     @State private var profiles: [Profile] = []
     @State private var nameRequest: ProfileNameRequest?
+    @State private var pendingCheck: PendingCheck?
+    /// The profile Add from GitHub puts its mod into, when started from a profile's menu.
+    @State private var addTarget: Profile?
+    /// Bumped to re-read companion apps after an install or a switch.
+    @State private var companionsChanged = 0
     @Binding var modsChanged: Int
 
     /// A modded copy of the game with a preset's mod in it, and its add-ons.
@@ -59,6 +64,19 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         let kind: ProfileNameKind
         let profile: Profile
         var name: String
+    }
+
+    /// A mod unpacked and checked against a profile's mods, waiting for the go-ahead.
+    struct PendingCheck: Identifiable {
+        let id = UUID()
+        let name: String
+        let repo: String
+        let version: String
+        let rule: ModInstallRule
+        let staged: StagedMod
+        let report: ModCompatibilityReport
+        let host: (name: String, folder: URL)
+        var dependencies = ModDependencies()
     }
 
     struct PendingPlan: Identifiable {
@@ -89,6 +107,9 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             ForEach(installed.filter { mod in !presets.contains { $0.repo == mod.repo } }) { mod in
                 otherModRow(mod)
             }
+            ForEach(ModCompanion.companions(steamAppId: steamAppId)) { companion in
+                companionRow(companion)
+            }
             addRow
             if busy != nil || message != nil {
                 statusRow
@@ -112,6 +133,9 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
         .sheet(item: $nameRequest) { request in
             nameSheet(request)
+        }
+        .sheet(item: $pendingCheck, onDismiss: discardPendingCheck) { pending in
+            compatibilitySheet(pending)
         }
     }
 
@@ -163,6 +187,17 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                 if isOn {
                     Button("Turn Off") { turnOffMods() }
                 }
+                Menu("Add Mod") {
+                    ForEach(addablePresets(for: profile)) { preset in
+                        Button(preset.name) { addPreset(preset, to: profile) }
+                    }
+                    if !addablePresets(for: profile).isEmpty { Divider() }
+                    Button("From GitHub…") {
+                        addTarget = profile
+                        showAddSheet = true
+                    }
+                }
+                Divider()
                 Button("New Profile from This…") {
                     nameRequest = ProfileNameRequest(kind: .duplicate, profile: profile, name: "\(profile.name) 2")
                 }
@@ -218,7 +253,8 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     .disabled(busy != nil)
             }
             Menu {
-                Button("Remove", role: .destructive) { remove(mod, in: profile.folder) }
+                // Just this mod: the profile and its other mods stay.
+                Button("Remove", role: .destructive) { removeAddOn(mod, from: profile) }
             } label: {
                 Image(systemName: "ellipsis")
             }
@@ -454,7 +490,10 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                 .onSubmit(planFromGitHub)
             HStack {
                 Spacer()
-                Button("Cancel", role: .cancel) { showAddSheet = false }
+                Button("Cancel", role: .cancel) {
+                    showAddSheet = false
+                    addTarget = nil
+                }
                     .keyboardShortcut(.cancelAction)
                 Button("Continue", action: planFromGitHub)
                     .keyboardShortcut(.defaultAction)
@@ -487,7 +526,10 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             }
             HStack {
                 Spacer()
-                Button("Cancel", role: .cancel) { pendingPlan = nil }
+                Button("Cancel", role: .cancel) {
+                    pendingPlan = nil
+                    addTarget = nil
+                }
                 Button("Install") {
                     pendingPlan = nil
                     install(
@@ -514,6 +556,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     /// game and a BepInEx loader (Town of Us), preferring the one that's on.
     /// Its BepInEx only loads plugins from its own folder, never the plain game's.
     private var extensionHost: (name: String, folder: URL)? {
+        if let addTarget { return (addTarget.name, addTarget.folder) }
         var hosts = profiles.filter { ModInstaller.hasBepInEx($0.folder) }
             .map { (name: $0.name, folder: $0.folder) }
         hosts += presets.compactMap { preset -> (name: String, folder: URL)? in
@@ -534,6 +577,290 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         rule.frozenCopy = false
         if fileName.lowercased().hasSuffix(".dll") { rule.subpath = "BepInEx/plugins" }
         return (rule, host.folder.appending(path: program.url.lastPathComponent))
+    }
+
+    // MARK: Companion apps
+
+    /// An app that runs next to the game (BetterCrewLink), with a switch to
+    /// start it whenever the game starts, whichever profile is on.
+    private func companionRow(_ companion: ModCompanion) -> some View {
+        _ = companionsChanged
+        let exe = companion.installedExecutable(bottleURL: program.bottle.url)
+        let starts = Binding(
+            get: { companion.startsWithGame(bottleURL: program.bottle.url) },
+            set: { isOn in
+                companion.setStartsWithGame(isOn, bottleURL: program.bottle.url)
+                companionsChanged += 1
+            }
+        )
+        return HStack(spacing: 12) {
+            companionIcon(companion)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(companion.name)
+                Text(exe == nil ? companion.summary
+                     : starts.wrappedValue ? "Starts with the game" : "Installed · starts on its own")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            if let exe {
+                Toggle("Start with the game", isOn: starts)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .help("Start \(companion.name) whenever you press Play")
+                Menu {
+                    Button("Check with Mods") { showCompanionCheck(companion) }
+                    Button("Open \(companion.name)") { start(companion, at: exe) }
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([exe]) }
+                    Divider()
+                    Button("Remove", role: .destructive) { removeCompanion(companion) }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+            } else {
+                Button("Install") { installCompanion(companion) }
+            }
+        }
+        .disabled(busy != nil)
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func companionIcon(_ companion: ModCompanion) -> some View {
+        if let asset = companion.logoAsset, NSImage(named: asset) != nil {
+            Image(asset)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
+        } else {
+            modIcon
+        }
+    }
+
+    /// The profile that's on, or the first one: what a companion runs alongside.
+    private var activeProfile: Profile? {
+        profiles.first { isActive($0.folder) } ?? profiles.first
+    }
+
+    private func showCompanionCheck(_ companion: ModCompanion) {
+        let profile = activeProfile
+        let report = companion.compatibility(
+            profileFolder: profile?.folder, gameFolder: gameFolder,
+            mods: profile.map { ModInstaller.installedMods(in: $0.folder) } ?? []
+        )
+        let against = profile.map { " with \($0.name)" } ?? ""
+        message = (["\(companion.name)\(against):"] + report.findings.map(\.message)).joined(separator: " ")
+    }
+
+    /// Unpacks the app out of its Windows installer into this bottle, getting
+    /// 7-Zip first when it isn't here yet: the installer can't run under Wine.
+    private func installCompanion(_ companion: ModCompanion) {
+        Task {
+            busy = "Checking \(companion.name)…"
+            defer { busy = nil }
+            do {
+                let version = try await companion.install(bottleURL: program.bottle.url) { step in
+                    await MainActor.run { busy = step }
+                }
+                companionsChanged += 1
+                showCompanionCheck(companion)
+                message = "Installed \(companion.name) \(version). It's opening now so you can set it up, "
+                    + "and from now on it starts with the game. " + (message ?? "")
+                // Opened once now: settling its settings first is part of installing it.
+                if let exe = companion.installedExecutable(bottleURL: program.bottle.url) {
+                    start(companion, at: exe)
+                }
+            } catch {
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    private func removeCompanion(_ companion: ModCompanion) {
+        do {
+            try companion.uninstall(bottleURL: program.bottle.url)
+            message = "Removed \(companion.name). Its settings are kept for next time."
+        } catch {
+            message = "Couldn't remove \(companion.name): \(error.localizedDescription)"
+        }
+        companionsChanged += 1
+    }
+
+    /// Starts the companions that are switched on, next to the game.
+    private func startCompanions() {
+        for companion in ModCompanion.companions(steamAppId: steamAppId)
+        where companion.startsWithGame(bottleURL: program.bottle.url) {
+            if let exe = companion.installedExecutable(bottleURL: program.bottle.url) {
+                start(companion, at: exe)
+            }
+        }
+    }
+
+    private func start(_ companion: ModCompanion, at exe: URL) {
+        Task {
+            do {
+                try await Wine.runProgram(at: exe, args: companion.launchArguments, bottle: program.bottle)
+            } catch {
+                message = "Couldn't start \(companion.name): \(error.localizedDescription)"
+            }
+        }
+    }
+
+    // MARK: More than one mod in a profile
+
+    /// Presets that could join a profile: ones not in it yet. A known
+    /// conflict still shows, so the check can say why it can't go in.
+    private func addablePresets(for profile: Profile) -> [ModPreset] {
+        let present = Set(ModInstaller.installedMods(in: profile.folder).map { $0.repo.lowercased() })
+        return presets.filter { !present.contains($0.repo.lowercased()) }
+    }
+
+    /// Fetches a preset's latest release into a profile that already has a
+    /// mod, checking it against that mod (and any others) before anything is written.
+    private func addPreset(_ preset: ModPreset, to profile: Profile) {
+        Task {
+            busy = "Checking \(preset.name) against \(profile.name)…"
+            defer { busy = nil }
+            do {
+                async let readme = GitHubReleases.readme(repo: preset.repo)
+                let release = try await GitHubReleases.latestRelease(repo: preset.repo)
+                let readmeText = try? await readme
+                let plan = ModReadmePlanner.plan(readme: readmeText, release: release, repo: preset.repo)
+                guard let asset = release.assets.first(where: { preset.matchesAsset(named: $0.name) })
+                    ?? plan?.asset else {
+                    message = "\(preset.name) \(release.tagName) has no file to install."
+                    return
+                }
+                // Into this profile's copy as it is: no copy of its own.
+                var rule = preset.install
+                rule.frozenCopy = false
+                rule.ownFolder = false
+                rule.copyGame = false
+                let text = [release.body, readmeText].compactMap { $0 }.joined(separator: "\n")
+                let staged = try await ModInstaller.stage(asset: asset, rule: rule, into: profile.folder)
+                await checkThenInstall(
+                    staged, name: preset.name, repo: preset.repo, version: release.tagName, rule: rule,
+                    host: (profile.name, profile.folder),
+                    required: ModGameVersion.required(in: text, modVersion: release.tagName),
+                    dependencies: plan?.dependencies ?? ModDependencies()
+                )
+            } catch {
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    /// Checks a staged mod against the host's mods. Shows what it found
+    /// when there's anything to decide; otherwise installs straight away.
+    private func checkThenInstall( // swiftlint:disable:this function_parameter_count
+        _ staged: StagedMod, name: String, repo: String, version: String, rule: ModInstallRule,
+        host: (name: String, folder: URL), required: String?, dependencies: ModDependencies = ModDependencies()
+    ) async {
+        let report = ModCompatibility.check(
+            name: name, repo: repo, staged: staged, profile: host.folder, requiredGameVersion: required
+        )
+        let pending = PendingCheck(
+            name: name, repo: repo, version: version, rule: rule, staged: staged, report: report,
+            host: host, dependencies: dependencies
+        )
+        if report.worst == .info {
+            await installChecked(pending)
+        } else {
+            pendingCheck = pending
+        }
+    }
+
+    private func installChecked(_ pending: PendingCheck) async {
+        defer {
+            ModInstaller.discard(pending.staged)
+            addTarget = nil
+        }
+        busy = "Installing \(pending.name) into \(pending.host.name)…"
+        defer { busy = nil }
+        do {
+            let result = try ModInstaller.installStaged(
+                pending.staged, version: pending.version, name: pending.name, repo: pending.repo,
+                rule: pending.rule, gameExecutable: pending.host.folder.appending(path: program.url.lastPathComponent),
+                gameFolder: pending.host.folder, skipping: pending.report.skipped
+            )
+            let notes = await installDependencies(
+                pending.dependencies, into: result, seen: [pending.repo.lowercased()]
+            )
+            let checked = pending.report.findings.map(\.message)
+            message = (["Added \(pending.name) to \(pending.host.name). It loads with the others the next time "
+                + "you press Play."] + checked + notes).joined(separator: " ")
+        } catch {
+            message = error.localizedDescription
+        }
+        await refresh()
+    }
+
+    private func discardPendingCheck() {
+        // Dismissed without installing: the sheet's Install clears this first.
+        if let pending = pendingCheck {
+            ModInstaller.discard(pending.staged)
+            pendingCheck = nil
+            addTarget = nil
+        }
+    }
+
+    private func compatibilitySheet(_ pending: PendingCheck) -> some View {
+        let report = pending.report
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(report.canInstall
+                 ? "Add \(pending.name) to \(pending.host.name)?"
+                 : "\(pending.name) can't go in with \(pending.host.name)")
+                .font(.headline)
+            Text("Checked against the mods already in this profile.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(report.findings.sorted { $0.severity > $1.severity }, id: \.self) { finding in
+                    Label {
+                        Text(finding.message).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        switch finding.severity {
+                        case .blocker: Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+                        case .warning: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        case .info: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        }
+                    }
+                }
+            }
+            HStack {
+                Spacer()
+                Button(report.canInstall ? "Cancel" : "OK", role: .cancel) {
+                    discardPendingCheck()
+                }
+                .keyboardShortcut(.cancelAction)
+                if report.canInstall {
+                    Button("Add Anyway") {
+                        let accepted = pending
+                        pendingCheck = nil
+                        Task { await installChecked(accepted) }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+
+    /// Takes one mod out of a profile, putting back any files it replaced.
+    private func removeAddOn(_ mod: InstalledMod, from profile: Profile) {
+        do {
+            try ModInstaller.uninstall(mod, from: profile.folder)
+            message = "Removed \(mod.name) from \(profile.name)."
+        } catch {
+            message = error.localizedDescription
+        }
+        Task { await refresh() }
     }
 
     // MARK: Actions
@@ -578,7 +905,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             else { return nil }
             return Profile(
                 folder: entry.folder, name: ModProfiles.displayName(of: entry.folder, modName: main.name),
-                mod: main, preset: preset, addOns: mods.filter { mod in !presets.contains { $0.repo == mod.repo } }
+                mod: main, preset: preset, addOns: mods.filter { $0.repo != main.repo }
             )
         }
         if let appId = steamAppId,
@@ -696,7 +1023,17 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             do {
                 // A mod that isn't a preset is an add-on for the installed modded copy, if there is one.
                 let isPreset = presets.contains { $0.repo == repo }
-                let addOn = isPreset ? nil : addOnTarget(rule, fileName: asset.name)
+                if !isPreset, let host = extensionHost,
+                   let addOn = addOnTarget(rule, fileName: asset.name) {
+                    busy = "Checking \(name) against \(host.name)'s mods…"
+                    let staged = try await ModInstaller.stage(asset: asset, rule: addOn.rule, into: host.folder)
+                    await checkThenInstall(
+                        staged, name: name, repo: repo, version: release.tagName, rule: addOn.rule,
+                        host: host, required: nil, dependencies: dependencies
+                    )
+                    return
+                }
+                let addOn: (rule: ModInstallRule, executable: URL)? = nil
                 let result = try await ModInstaller.install(
                     asset: asset, version: release.tagName, name: name, repo: repo,
                     rule: addOn?.rule ?? rule, gameExecutable: addOn?.executable ?? program.url,
@@ -736,13 +1073,16 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             busy = "Installing \(file.lastPathComponent)…"
             defer { busy = nil }
             do {
-                if let addOn = addOnTarget(
+                if let host = extensionHost, let addOn = addOnTarget(
                     ModInstallRule(mode: file.pathExtension.lowercased() == "zip" ? .extract : .copyFile, subpath: ""),
                     fileName: file.lastPathComponent
                 ) {
-                    finished(try await ModInstaller.installLocal(
-                        file: file, rule: addOn.rule, gameExecutable: addOn.executable
-                    ))
+                    let name = file.deletingPathExtension().lastPathComponent
+                    let staged = try await ModInstaller.stageLocal(file: file, rule: addOn.rule, into: host.folder)
+                    await checkThenInstall(
+                        staged, name: name, repo: "local/\(name)", version: "local", rule: addOn.rule,
+                        host: host, required: nil
+                    )
                 } else {
                     finished(try await ModInstaller.installLocal(file: file, gameExecutable: program.url))
                 }
@@ -820,6 +1160,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                         try SteamModLauncher.select(nil, appId: appId, bottleURL: program.bottle.url)
                     }
                     try SteamLauncher.launch(appId: appId, bottle: program.bottle)
+                    startCompanions()
                     message = nil
                     launchRequest = makeLaunchRequest(
                         preset, appId: appId, modFolder: modFolder, steamWasRunning: steamWasRunning, started: started
@@ -841,6 +1182,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             }
             if preset.launch == .steam, let appId = preset.steamAppId {
                 try SteamLauncher.launch(appId: appId, bottle: program.bottle)
+                startCompanions()
                 message = "Starting \(modFolder == nil ? program.name : preset.name) through Steam…"
             } else {
                 program.run()
