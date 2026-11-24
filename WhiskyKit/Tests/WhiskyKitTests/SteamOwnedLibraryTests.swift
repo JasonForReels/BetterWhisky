@@ -218,6 +218,6 @@ struct ModAccountPrimerTests {
 
     @Test func townOfUsHasItsSaveSuffix() {
         #expect(ModPreset.named("Town of Us: Mira")?.accountSave?.suffix == "_TOUMira")
-        #expect(ModPreset.named("The Other Roles")?.accountSave == nil)
+        #expect(ModPreset.named("LevelImposter")?.accountSave == nil)
     }
 }

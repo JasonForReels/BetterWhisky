@@ -160,12 +160,13 @@ public extension ModPreset {
             accountSave: .amongUs(suffix: "_TOUMira")
         ),
         ModPreset(
-            name: "The Other Roles",
-            repo: "TheOtherRolesAU/TheOtherRoles",
+            name: "LevelImposter",
+            repo: "DigiWorm0/LevelImposter",
             gameExecutables: ["Among Us.exe"],
-            assetPattern: #"^TheOtherRoles\.zip$"#,
+            // The zip bundles BepInEx and Reactor; LevelImposter.dll alone is for existing setups.
+            assetPattern: #"^LevelImposter\.zip$"#,
             install: ModInstallRule(mode: .extract, frozenCopy: true),
-            notes: "Ships with BepInEx. Needs the Among Us version it was built for.",
+            notes: "Custom maps. Ships with BepInEx and Reactor.",
             steamAppId: 945360, launch: .steam
         )
     ]

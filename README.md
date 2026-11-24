@@ -83,7 +83,7 @@ game's crash log.
 
 ## What BetterWhisky adds
 
-- **Mods from GitHub in one click.** Built-in presets (Town of Us: Mira and The Other Roles for
+- **Mods from GitHub in one click.** Built-in presets (Town of Us: Mira and LevelImposter for
   Among Us), or paste any GitHub repo. BetterWhisky takes the **latest release**, reads the
   install steps from its **release notes and README**, and shows you the plan before it
   changes anything. Dropping a `.zip` or `.dll` works too.
@@ -192,7 +192,7 @@ by [Isaac Marovitz](https://github.com/IsaacMarovitz). It also relies on:
 - [BepInEx](https://github.com/BepInEx/BepInEx), which the Among Us mods use to load
 - [crossgen2](https://github.com/dotnet/runtime) from .NET, for pre-compiling mods
 - Mods: [Town of Us: Mira](https://github.com/AU-Avengers/TOU-Mira) by AU-Avengers and
-  [The Other Roles](https://github.com/TheOtherRolesAU/TheOtherRoles) by TheOtherRolesAU
+  [LevelImposter](https://github.com/DigiWorm0/LevelImposter) by DigiWorm0
 - [CrossOver](https://www.codeweavers.com/crossover) by CodeWeavers and WineHQ, and D3DMetal by Apple
 
 <table>
