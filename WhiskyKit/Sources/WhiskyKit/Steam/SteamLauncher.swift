@@ -24,6 +24,8 @@ public enum SteamLaunchError: LocalizedError, Equatable {
     case steamNotInstalled
     /// No bottle known to Whisky has that App ID installed.
     case gameNotFound(appId: Int)
+    /// The bottle's client isn't signed in; its sign-in window was opened.
+    case signedOut
 
     public var errorDescription: String? {
         switch self {
@@ -31,6 +33,8 @@ public enum SteamLaunchError: LocalizedError, Equatable {
             String(localized: "steam.launch.error.noClient")
         case let .gameNotFound(appId):
             String(localized: "steam.launch.error.gameNotFound \(appId)")
+        case .signedOut:
+            String(localized: "Steam isn't signed in. Sign in in the Steam window that opened, then press Play again.")
         }
     }
 }
@@ -116,6 +120,22 @@ public enum SteamLauncher {
                     start: { clientRun = startClient(steamExe: steamExe, bottle: bottle) },
                     hasStarted: { await !hostSteamPIDs().subtracting(running).isEmpty }
                 )
+            }
+            // A signed-out client drops -applaunch silently: show its sign-in
+            // window, wait for the sign-in, then restart it hidden (the visible
+            // client keeps its heavier browser running) and launch as asked.
+            if await SteamSignIn.waitForState(steamRoot: steamRoot) == .signedOut {
+                try? await SteamInstallService.showSignIn(bottle: bottle)
+                NotificationCenter.default.post(name: SteamSignIn.signInNeededNotification, object: bottle.url)
+                guard await SteamSignIn.waitForSignIn(steamRoot: steamRoot) else {
+                    throw SteamLaunchError.signedOut
+                }
+                try? await SteamInstallService.hideAfterSignIn(bottle: bottle)
+                // The restarted client signs in with the saved account.
+                try? await Task.sleep(for: .seconds(5))
+                guard await SteamSignIn.waitForState(steamRoot: steamRoot, timeout: .seconds(90)) == .signedIn else {
+                    throw SteamLaunchError.signedOut
+                }
             }
             let result = try await Wine.runProgram(at: steamExe, bottle: bottle, request: request, onOutput: onOutput)
             return result.includingOutput(of: clientRun)
