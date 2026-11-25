@@ -12,6 +12,23 @@
         <description>BetterWhisky releases</description>
         <language>en</language>
         <item>
+            <title>1.4.1</title>
+            <pubDate>Wed, 25 Nov 2026 19:57:14 +0200</pubDate>
+            <link>https://github.com/JasonForReels/BetterWhisky</link>
+            <sparkle:version>202611251752</sparkle:version>
+            <sparkle:shortVersionString>1.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky-1.4.1.dmg" length="15299974" type="application/octet-stream" sparkle:edSignature="HJJsNtTg2Aj3zxS/29yl6/nXYid7CexvrJGWiwZGqjI7TeOjH31D8IODnTN8aA5hp75D2LQZhtWJRepXhAd4BQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky202611251752-202611250806.delta" sparkle:deltaFrom="202611250806" length="510830" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="aabq2zaU2igs2SkYiAsvmIqLCVWulq7lc3T/q5dARlFUhqR7MOa4Qhue+kEhPdBfQlRty2wfzPHNDZ1eiJb9DA=="/>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky202611251752-202611241808.delta" sparkle:deltaFrom="202611241808" length="1412902" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="0rAkAfpjmU0PZr+Ss5N5aj9aKdT7mn4pk1/TBJ7TqMVSY9V84T1bG2GXI1XXihc3VEi6nWW8Toees7rSHlJoDw=="/>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky202611251752-202611240713.delta" sparkle:deltaFrom="202611240713" length="2250178" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="q0Um8x+QScjRreiWfNqDCo6EywimDrlbvorDWZDBgVLiXyJlFJRNmjuv6VYbXCyiUc8OzLpuZ/Rfy7xH3tHoAQ=="/>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky202611251752-202611231804.delta" sparkle:deltaFrom="202611231804" length="2291778" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="i4Rb0JG9PXKBgZjR02X1OIVhm+gPxO/FZ6O4gAEOu33j4FI8YWWl3NMFDMosWlo1hd/4rrB+PyetWTQF4VfDCQ=="/>
+                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky202611251752-202611231435.delta" sparkle:deltaFrom="202611231435" length="2304674" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="OPoiiq1b29rEqk9NHpXHSQE8hyl7FwoX5mnyU525Oaz1MAOJGUHg8QI/myb12EIr7gyx9T/sv2s5nZ9VbP3bAw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.4.0</title>
             <pubDate>Wed, 25 Nov 2026 10:10:51 +0200</pubDate>
             <link>https://github.com/JasonForReels/BetterWhisky</link>
@@ -19,7 +36,7 @@
             <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.0/BetterWhisky-1.4.0.dmg" length="15307480" type="application/octet-stream" sparkle:edSignature="mo7VsbxnZMSR1EfqXNq3p484ic2fP3yJ+Tr2b+SbGTzE32kMIfuyOpgzg0ML9rh2sh0skYV4dqSFfET+Lbe1AQ=="/>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky-1.4.0.dmg" length="15307480" type="application/octet-stream" sparkle:edSignature="mo7VsbxnZMSR1EfqXNq3p484ic2fP3yJ+Tr2b+SbGTzE32kMIfuyOpgzg0ML9rh2sh0skYV4dqSFfET+Lbe1AQ=="/>
             <sparkle:deltas>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.0/BetterWhisky202611250806-202611241808.delta" sparkle:deltaFrom="202611241808" length="1333478" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="ue28UTSOsE7ENtXwn5zujK+654WwoqslWo6CUT7Z5j0vsL5vbdJjT/Ki8K52OackfW5h31+ivAvvA4wSxR5fBw=="/>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.0/BetterWhisky202611250806-202611240713.delta" sparkle:deltaFrom="202611240713" length="2181350" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MFAontookw5DdUKsqZUbmlj0OHUm9MrhHEBB6FkbeMaWKWlfU4lU9fXx6cDg9h4V3LxjfkYMWJ13kJ7uqYCdDw=="/>
@@ -36,27 +53,12 @@
             <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.0/BetterWhisky-1.3.0.dmg" length="14968778" type="application/octet-stream" sparkle:edSignature="r4UjgXJM99NTBn0mGKS8K7rVBz4W99M6y874sKND/MKHxVIfr+MNAduZ2B28qPz2LmQgfnNSYHUQTecKagNHCA=="/>
+            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.1/BetterWhisky-1.3.0.dmg" length="14968778" type="application/octet-stream" sparkle:edSignature="r4UjgXJM99NTBn0mGKS8K7rVBz4W99M6y874sKND/MKHxVIfr+MNAduZ2B28qPz2LmQgfnNSYHUQTecKagNHCA=="/>
             <sparkle:deltas>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.3.0/BetterWhisky202611241808-202611240713.delta" sparkle:deltaFrom="202611240713" length="1798974" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="AUdQsdbB/PMXkTFz1db9FpaMFoUH8SgkS55i1V55J8oLpSVcvuw1Az5hH/DzQ3rsGE4A12dK9mG2ziuC1Rp/Dg=="/>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.3.0/BetterWhisky202611241808-202611231804.delta" sparkle:deltaFrom="202611231804" length="1858134" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="v3+J4bwn7GK44qukkqJkjXVOtwkPz/f6W9QLQ6UN9YI1f/QRN1lXJ1ENqQ3LXBqkJIg6fHjq8ryEx/xNHg/PCg=="/>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.3.0/BetterWhisky202611241808-202611231435.delta" sparkle:deltaFrom="202611231435" length="1869214" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Q5vRgWEnJpCImMxLtgWNTtjBcHFXD+5IFPiStR9AGWOUif2NDOda1n40G/44tpZWUe6iryii+S9pPposCiAaAA=="/>
                 <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.3.0/BetterWhisky202611241808-202611230611.delta" sparkle:deltaFrom="202611230611" length="2200694" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="RZ7K7NUBZDoH55wUdSBJ1E2iLeY9lL1Mx+DLhWqwPhOZov2VVy2QzdajuGtiHVk3RIPqXwCAPM6clWD3dDc6Dw=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.2.0</title>
-            <pubDate>Tue, 24 Nov 2026 09:16:55 +0200</pubDate>
-            <link>https://github.com/JasonForReels/BetterWhisky</link>
-            <sparkle:version>202611240713</sparkle:version>
-            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.4.0/BetterWhisky-1.2.0.dmg" length="14332111" type="application/octet-stream" sparkle:edSignature="MqjnEzKKhh0OJCAyqarq2YukfZWjzoVvXjPzlDcfPELuPDzoahthjEqFoAWVDjBjRW4WrQGX2yxnj/AVTtUZDg=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.2.0/BetterWhisky202611240713-202611231804.delta" sparkle:deltaFrom="202611231804" length="1038042" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="fpaa+JjbNJXBL7jNIrubhy1fsbidilyL3uj2V835k0S87sT/N6JwT8ze1wm9C3mTtB9Aj6eAuu4xwe14v+hsCQ=="/>
-                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.2.0/BetterWhisky202611240713-202611231435.delta" sparkle:deltaFrom="202611231435" length="1078210" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="GwmomdgdPjBQ8xFVOLNUeGuz7KwcHyu+DgCRDU9HSbCnA1+NwtQXb0hBccEQgG8UPIJsjdwzAbTR9S/u4WsmCQ=="/>
-                <enclosure url="https://github.com/JasonForReels/BetterWhisky/releases/download/v1.2.0/BetterWhisky202611240713-202611230611.delta" sparkle:deltaFrom="202611230611" length="1572018" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="d1xNUb9mThkg6Xb52af6uRxW+2dD2KdH8uCU25evMvIAtzdVT6HK4FF6RPuk3Oh9SUWMe6uoi610NtQBdSIxAw=="/>
             </sparkle:deltas>
         </item>
     </channel>
