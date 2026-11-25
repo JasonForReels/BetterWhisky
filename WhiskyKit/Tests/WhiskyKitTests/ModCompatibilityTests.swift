@@ -223,4 +223,20 @@ import Testing
         #expect(FileManager.default.fileExists(atPath: programFiles.appending(path: "Steam/steam.exe").path))
         #expect(companion.startsWithGame(bottleURL: root, defaults: defaults))
     }
+
+    @Test func roleModsAreRecognised() {
+        #expect(ModCompatibility.isRoleMod(name: "Town of Us: Mira", repo: "AU-Avengers/TOU-Mira"))
+        #expect(ModCompatibility.isRoleMod(name: "StellarRoles", repo: "local/StellarRoles"))
+        #expect(ModCompatibility.isRoleMod(name: "The Other Roles", repo: "TheOtherRolesAU/TheOtherRoles"))
+        #expect(!ModCompatibility.isRoleMod(name: "LevelImposter", repo: "DigiWorm0/LevelImposter"))
+        #expect(!ModCompatibility.isRoleMod(name: "Reactor", repo: "NuclearPowered/Reactor"))
+    }
+
+    @Test func readingFilesAreTold() {
+        #expect(ModCompatibility.isReadingFile("changelog.txt"))
+        #expect(ModCompatibility.isReadingFile("BepInEx/patchers/Splash/README.md"))
+        #expect(ModCompatibility.isReadingFile("LICENSE"))
+        #expect(!ModCompatibility.isReadingFile("BepInEx/config/gg.reactor.api.cfg"))
+        #expect(!ModCompatibility.isReadingFile("BepInEx/plugins/Mod.dll"))
+    }
 }

@@ -139,6 +139,7 @@ public enum ModCompatibility {
             report.add(.info, "\(name) is already in this profile; this replaces it.")
         }
         checkConflicts(name: name, repo: repo, with: others, presets: presets, into: &report)
+        checkRoleMods(name: name, repo: repo, with: others, into: &report)
         checkLoader(name: name, paths: paths, staged: staged, profile: profile, into: &report)
         checkPlugins(name: name, paths: paths, staged: staged, profile: profile, owners: others, into: &report)
         checkOverwrites(name: name, paths: paths, skipping: report.skipped, owners: others, into: &report)
@@ -167,6 +168,31 @@ public enum ModCompatibility {
             if let reason {
                 report.add(.blocker, "\(name) and \(other.name) can't run together: \(reason)")
             }
+        }
+    }
+
+    /// Mods that each change Among Us's roles, meetings and game settings.
+    /// Two of them in one profile often clash once the game runs, which no
+    /// file check can see.
+    static let roleModNames = [
+        "townofus", "touMira", "theotherroles", "stellarroles", "tohe", "townofhost", "extraroles", "laschesroles"
+    ].map { $0.lowercased() }
+
+    public static func isRoleMod(name: String, repo: String) -> Bool {
+        let keys = [name, repo, (repo as NSString).lastPathComponent].map {
+            $0.lowercased().filter { $0.isLetter || $0.isNumber }
+        }
+        return keys.contains { key in roleModNames.contains { key.contains($0) } }
+    }
+
+    static func checkRoleMods(
+        name: String, repo: String, with others: [InstalledMod], into report: inout ModCompatibilityReport
+    ) {
+        guard isRoleMod(name: name, repo: repo) else { return }
+        for other in others where isRoleMod(name: other.name, repo: other.repo) {
+            report.add(.warning, "\(name) and \(other.name) are both role mods: each changes the roles, meetings "
+                + "and game settings, so together they may crash or act oddly. Nothing is lost if they do: remove "
+                + "\(name) with its ⋯ menu, or keep each in its own profile and pick one with Play With.")
         }
     }
 
@@ -249,10 +275,31 @@ public enum ModCompatibility {
                 !skipped.contains(path) && !path.lowercased().hasSuffix(".dll") && theirs.contains(path.lowercased())
             }
             guard !clashes.isEmpty else { continue }
-            let sample = clashes.prefix(2).map { ($0 as NSString).lastPathComponent }.joined(separator: ", ")
-            let more = clashes.count > 2 ? " and \(clashes.count - 2) more" : ""
-            report.add(.warning, "Replaces \(owner.name)'s \(sample)\(more).")
+            let notes = clashes.filter(isReadingFile)
+            let files = clashes.filter { !isReadingFile($0) }
+            if !notes.isEmpty {
+                report.add(.info, "Both include \(list(notes)), a text file for reading that the game doesn't use. "
+                    + "\(name)'s copy is shown, and \(owner.name)'s comes back if you remove \(name).")
+            }
+            if !files.isEmpty {
+                report.add(.warning, "Replaces \(owner.name)'s \(list(files)). BetterWhisky keeps \(owner.name)'s "
+                    + "copy and puts it back if you remove \(name).")
+            }
         }
+    }
+
+    /// Notes for people, not the game: readme, changelog, licence and the like.
+    static func isReadingFile(_ path: String) -> Bool {
+        let file = (path as NSString).lastPathComponent.lowercased()
+        let ext = (file as NSString).pathExtension
+        if ["txt", "md", "rtf", "pdf", "html", "htm"].contains(ext) { return true }
+        return ["readme", "license", "licence", "changelog", "changes", "notice", "credits"]
+            .contains((file as NSString).deletingPathExtension)
+    }
+
+    static func list(_ paths: [String]) -> String {
+        let names = paths.prefix(2).map { ($0 as NSString).lastPathComponent }.joined(separator: ", ")
+        return paths.count > 2 ? "\(names) and \(paths.count - 2) more" : names
     }
 
     // MARK: Helpers
