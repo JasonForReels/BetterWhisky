@@ -174,36 +174,63 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         .padding(.vertical, 4)
     }
 
+    /// A profile's picture: the logo kept beside it, or the first of its mods
+    /// with a logo in the app.
+    private func profileImage(_ profile: Profile) -> NSImage? {
+        let kept = profile.folder.deletingLastPathComponent().appending(path: ".betterwhisky-logo.png")
+        if let image = NSImage(contentsOf: kept) { return image }
+        return profile.mods.lazy.compactMap(modImage).first
+    }
+
+    private func modImage(_ mod: InstalledMod) -> NSImage? {
+        NSImage(named: "ModLogo-" + mod.name.filter { $0.isLetter || $0.isNumber })
+    }
+
     private func profileTile(_ profile: Profile) -> some View {
         let isSelected = profile.id == selectedProfile?.id
         let isOn = isActive(profile.folder)
+        let count = profile.mods.count
         return Button {
             selectedProfileID = profile.folder
         } label: {
             VStack(spacing: 6) {
-                ProfileAvatar(name: profile.name, size: 56)
+                ProfileAvatar(name: profile.name, image: profileImage(profile), size: 76)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 3)
-                            .padding(-4)
+                            .padding(-5)
                     }
-                    .overlay(alignment: .bottomTrailing) {
+                    .overlay(alignment: .bottom) {
                         if isOn {
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.white, .green)
-                                .offset(x: 6, y: 6)
+                            Label("On", systemImage: "play.fill")
+                                .font(.caption2.weight(.bold))
+                                .labelStyle(.titleAndIcon)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .foregroundStyle(.white)
+                                .background(.green, in: Capsule())
+                                .offset(y: 9)
                         }
                     }
+                    .scaleEffect(isSelected ? 1.04 : 1)
+                    .shadow(color: .black.opacity(isSelected ? 0.3 : 0.12), radius: isSelected ? 8 : 3, y: 2)
+                    .padding(.bottom, 4)
                 Text(profile.name)
-                    .font(.caption.weight(isSelected ? .semibold : .regular))
-                    .lineLimit(1)
-                    .frame(width: 76)
+                    .font(.callout.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(width: 96)
+                Text(count == 0 ? "No mods" : "\(count) mod\(count == 1 ? "" : "s")")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
-            .padding(.top, 4)
+            .padding(.top, 6)
+            .contentShape(Rectangle())
+            .animation(.snappy(duration: 0.2), value: isSelected)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(profile.name) profile\(isOn ? ", on" : "")")
+        .accessibilityLabel("\(profile.name) profile, \(count) mods\(isOn ? ", on" : "")")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .help("\(profile.name): \(profile.mods.map(\.name).joined(separator: ", ").nilIfEmpty ?? "no mods yet")")
     }
@@ -213,13 +240,14 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             nameRequest = ProfileNameRequest(kind: .create, profile: nil, name: "")
         } label: {
             VStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(.secondary, style: StrokeStyle(lineWidth: 1.5, dash: [5]))
-                    .frame(width: 56, height: 56)
-                    .overlay { Image(systemName: "plus").font(.title2).foregroundStyle(.secondary) }
-                Text("New Profile").font(.caption).foregroundStyle(.secondary).frame(width: 76)
+                RoundedRectangle(cornerRadius: 19, style: .continuous)
+                    .strokeBorder(.secondary.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [6]))
+                    .frame(width: 76, height: 76)
+                    .overlay { Image(systemName: "plus").font(.title).foregroundStyle(.secondary) }
+                    .padding(.bottom, 4)
+                Text("New Profile").font(.callout).foregroundStyle(.secondary).frame(width: 96)
             }
-            .padding(.top, 4)
+            .padding(.top, 6)
         }
         .buttonStyle(.plain)
         .disabled(busy != nil)
@@ -270,11 +298,11 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     }
 
     private func profileHeader(_ profile: Profile, isOn: Bool, summary: String) -> some View {
-        HStack(spacing: 12) {
-            ProfileAvatar(name: profile.name, size: 32)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(profile.name).font(.headline)
+        HStack(spacing: 14) {
+            ProfileAvatar(name: profile.name, image: profileImage(profile), size: 48)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(profile.name).font(.title3.weight(.semibold))
                     statusBadge(isOn ? "On" : "Off", color: isOn ? .green : .secondary)
                 }
                 Text(summary).font(.caption).foregroundStyle(.secondary)
@@ -287,10 +315,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     if let preset = launchPreset(for: profile) { play(preset, modFolder: profile.folder) }
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(busy != nil || profile.mods.isEmpty)
                 .help("Start the game with \(profile.name)'s mods")
             } else {
-                Button("Turn On") { switchOn(profile.folder) }
+                Button("Turn On", systemImage: "power") { switchOn(profile.folder) }
+                    .controlSize(.large)
                     .disabled(busy != nil)
                     .help("Make \(profile.name) the profile Play starts")
             }
@@ -398,9 +428,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         let update = preset.flatMap { latestVersions[$0.repo] }
             .flatMap { $0.tagName == mod.version ? nil : $0.tagName }
         return HStack(spacing: 12) {
-            Image(systemName: "puzzlepiece.extension")
-                .foregroundStyle(.secondary)
-                .frame(width: 28)
+            modRowIcon(mod)
             modLabel(mod, update: update, isOn: enabled.wrappedValue)
             Spacer(minLength: 12)
             if let update, let preset {
@@ -428,6 +456,18 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             .accessibilityLabel("More for \(mod.name)")
         }
         .padding(.vertical, 2)
+    }
+
+    private func modRowIcon(_ mod: InstalledMod) -> some View {
+        Group {
+            if let image = modImage(mod) {
+                Image(nsImage: image).resizable().scaledToFit().padding(3)
+            } else {
+                Image(systemName: "puzzlepiece.extension").foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 30, height: 30)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private func modLabel(_ mod: InstalledMod, update: String?, isOn: Bool) -> some View {
@@ -1574,10 +1614,11 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     }
 }
 
-/// A profile's picture: its initials on a colour picked from its name, so
-/// each profile keeps the same look.
+/// A profile's picture: its mod's logo on a dark tile, or its initials on a
+/// colour picked from its name, so each profile keeps the same look.
 private struct ProfileAvatar: View {
     let name: String
+    var image: NSImage?
     let size: CGFloat
 
     private static let colors: [Color] = [.red, .orange, .yellow, .green, .mint, .teal, .blue, .indigo, .purple, .pink]
@@ -1593,15 +1634,27 @@ private struct ProfileAvatar: View {
     }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: size / 4, style: .continuous)
-            .fill(color.gradient)
-            .frame(width: size, height: size)
-            .overlay {
-                Text(initials.isEmpty ? "?" : initials)
-                    .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+        let shape = RoundedRectangle(cornerRadius: size / 4, style: .continuous)
+        Group {
+            if let image {
+                shape.fill(LinearGradient(colors: [color.opacity(0.55), .black.opacity(0.85)],
+                                          startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .overlay {
+                        Image(nsImage: image).resizable().scaledToFit().padding(size * 0.08)
+                    }
+            } else {
+                shape.fill(color.gradient)
+                    .overlay {
+                        Text(initials.isEmpty ? "?" : initials)
+                            .font(.system(size: size * 0.36, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                    }
             }
-            .accessibilityHidden(true)
+        }
+        .frame(width: size, height: size)
+        .overlay { shape.strokeBorder(.white.opacity(0.12), lineWidth: 1) }
+        .accessibilityHidden(true)
     }
 }
 
