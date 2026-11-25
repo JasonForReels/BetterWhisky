@@ -1,11 +1,11 @@
 import useScrollScenes from './useScrollScenes.js'
 
 const REPO = 'https://github.com/JasonForReels/BetterWhisky'
-const VERSION = '1.0.0'
+const VERSION = '1.3.0'
 const DMG = `${REPO}/releases/download/v${VERSION}/BetterWhisky-${VERSION}.dmg`
 
 const statement =
-  'Paste a GitHub link. Press Play. BetterWhisky finds the right release, reads the install steps, keeps the game version the mod needs, and starts it through Steam so you stay signed in.'
+  'Make a profile. Add any mods to it. Press Play. BetterWhisky finds the right release, reads the install steps, keeps the game version the mod needs, and starts it through Steam so you stay signed in.'
 
 const tour = [
   {
@@ -37,17 +37,17 @@ const tour = [
 const showcase = [
   {
     eyebrow: 'Library',
-    title: 'Every mod gets its own card.',
-    body: 'The regular game and each modded version sit side by side. Each mod lives in an instant APFS clone of the game, so it takes no extra space until Steam changes the original.',
+    title: 'Every profile gets its own card.',
+    body: 'The regular game and each mod profile sit side by side, with the mod\'s own logo. Each profile is an instant APFS clone of the game, so it takes no extra space until Steam changes the original.',
     img: '/images/library.png',
-    alt: 'BetterWhisky Library with Among Us, Town of Us: Mira and Steam, under the Library, Bottles and Search tabs',
+    alt: 'Recently Played: LevelImposter, StellarRoles, Town of Us: Mira and BetterCrewLink',
   },
   {
-    eyebrow: 'Mod settings',
-    title: 'Switch mods with a toggle.',
-    body: 'Built-in presets for Town of Us: Mira and The Other Roles, or any GitHub repo. Dependencies like Reactor and MiraAPI, and runtimes like .NET and Visual C++, come along automatically.',
+    eyebrow: 'Profiles',
+    title: 'Profiles, like a streaming service.',
+    body: 'Each profile is its own copy of the game with any mix of mods: StellarRoles with LevelImposter, Town of Us: Mira on its own, or all three. Add mods from GitHub, a .zip, a .dll or a folder, and switch each one on or off.',
     img: '/images/mod-settings.png',
-    alt: 'Mod settings for Among Us',
+    alt: 'Mod profiles for Among Us: LevelImposter, Stellar with StellarRoles, and Town of Us: Mira',
   },
   {
     eyebrow: 'Loading',
@@ -59,6 +59,9 @@ const showcase = [
 ]
 
 const features = [
+  ['Mods from anywhere, several at once', 'Built-in mods, any GitHub repo, .zips, .dlls or whole folders: tick several and add them in one go. A new mod never replaces files another mod put there.'],
+  ['Pick a profile from the Library', 'The profile button beside Play, or Play With on any game, starts whichever profile you want.'],
+  ['A Steam Store inside the app', 'Browse the Steam Store and buy games without opening the Wine Steam window.'],
   ['Mods update themselves', 'New releases install when they support the current game. A release for a different game version is refused with a clear reason.'],
   ['Plays through Steam', 'Games like Among Us only sign you in when Steam starts them. BetterWhisky sets Steam up once.'],
   ['Each mod keeps its version', 'When Steam updates the game, the modded card keeps working on the old one until the mod catches up.'],
@@ -95,7 +98,7 @@ export default function App() {
             </div>
           </div>
           <div className="hero-device">
-            <img src="/images/app-library.png" alt="BetterWhisky Library under the Library, Bottles and Search tabs" />
+            <img src="/images/app-library.png" alt="BetterWhisky Library: Among Us with Play and the profile button" />
           </div>
         </div>
       </section>

@@ -16,9 +16,9 @@
   · <a href="https://whisky.jasonforreels.com">Website</a>
 </p>
 
-<img alt="BetterWhisky Library with Among Us, Town of Us: Mira and Steam, under the Library, Bottles and Search tabs" src="./images/screenshots/library.png">
+<img alt="BetterWhisky Library: Among Us with the profile button beside Play, and LevelImposter, StellarRoles, Town of Us: Mira and BetterCrewLink under Recently Played" src="./images/screenshots/library.png">
 
-*The regular game and each modded version get their own card. Hover a card for Play and mod settings.*
+*Each mod profile gets its own card, with its mod's logo. The button beside Play picks which profile to play.*
 
 ## Install
 
@@ -59,17 +59,25 @@ handy, pin it: **Bottles** → your bottle → **Pin Program**.
 - Right-click a card for **Mods…**, **Configure Bottle**, or, for a pinned program,
   **Show in Finder** and **Remove Pin**.
 
-### 4. Add mods
+### 4. Add mods with profiles
+
+Mods live in **profiles**, like profiles on a streaming service. Each profile is its own copy of
+the game with whichever mods you pick, all loading together: StellarRoles with LevelImposter,
+Town of Us: Mira on its own, or all three.
 
 1. In the **Library**, hover a game that supports mods and click the **gear**, or right-click it
    and choose **Mods…**.
-2. Pick a built-in mod and click **Install**, or click **Add from GitHub…** and paste the mod's
-   GitHub link. You can also drop a mod's `.zip` or `.dll` onto the sheet.
-3. BetterWhisky shows what it will install before it changes anything. Confirm, and the modded
-   version gets its own card in the Library. Click it to play.
+2. Click **New Profile** and name it.
+3. Click **Add Mod** on the profile: pick a built-in mod, **From GitHub…** (paste the mod's
+   link), or **From Files or Folders…** (`.zip`s, `.dll`s or whole mod folders). **Add Several
+   Mods…** lets you tick several at once, and **New Profile** can start with mods ticked. You can
+   also drop any of those onto the profile.
+4. BetterWhisky shows what it will install before it changes anything. A new mod never replaces
+   files another mod in the profile put there.
 
-Mods update themselves. To turn one off, update it now, or remove it, use its **⋯** menu in the
-same sheet.
+Each mod in a profile has its own on/off switch. To play, press **Play** on the profile, use the
+profile button beside **Play** on the Library banner, or right-click a game and choose
+**Play With**. Mods update themselves; a profile's **⋯** menu copies, renames or removes it.
 
 ### Change a bottle's settings
 
@@ -83,6 +91,11 @@ game's crash log.
 
 ## What BetterWhisky adds
 
+- **Profiles with any mix of mods.** Pick a profile like on a streaming service, and every mod
+  in it loads together, each with its own switch. Add mods from GitHub, a `.zip`, a `.dll` or a
+  whole folder; switch profiles from the Library banner.
+- **Mods that keep their own account start signed in.** Before Play, any mod that keeps its own
+  copy of the game's account save gets yours, so it doesn't stop on the Privacy Policy screen.
 - **Mods from GitHub in one click.** Built-in presets (Town of Us: Mira and The Other Roles for
   Among Us), or paste any GitHub repo. BetterWhisky takes the **latest release**, reads the
   install steps from its **release notes and README**, and shows you the plan before it
@@ -107,12 +120,12 @@ game's crash log.
   opening.
 
 <p>
-  <img width="420" alt="Mod settings: Town of Us on, The Other Roles available, Reduce memory use" src="./images/screenshots/mod-settings.png">
+  <img width="420" alt="Mod profiles: LevelImposter, Stellar (StellarRoles, on) and Town of Us: Mira, with New Profile" src="./images/screenshots/mod-settings.png">
   &nbsp;
   <img width="420" alt="Loading screen for Among Us with Town of Us: Mira" src="./images/screenshots/loading.png">
 </p>
 
-*Left: mod settings for a game. Right: a modded start, stage by stage.*
+*Left: a game's mod profiles. Right: a modded start, stage by stage.*
 
 ## How a modded start works
 
