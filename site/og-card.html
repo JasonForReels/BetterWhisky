@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+  Source for the link preview image (site/public/images/og-card.png, 1200x630).
+  Render with scripts/build-site-og-card.sh after editing.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --accent: #e0a15a; --accent-2: #f5c98e; --fg: #f5f5f7; --muted: #a1a1a6; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(900px 520px at 78% 40%, rgba(224, 161, 90, 0.28), transparent 70%),
+      radial-gradient(600px 400px at 8% 110%, rgba(110, 80, 200, 0.22), transparent 70%),
+      #050506;
+    color: var(--fg);
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  .copy { position: absolute; left: 64px; top: 64px; width: 540px; }
+  h1 { white-space: nowrap; }
+  .brand { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 600; }
+  .brand img { width: 52px; height: 52px; }
+  h1 {
+    margin-top: 36px; font-size: 54px; line-height: 1.02; letter-spacing: -0.035em; font-weight: 750;
+  }
+  h1 span {
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    -webkit-background-clip: text; color: transparent;
+  }
+  .chips { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-size: 17px; font-weight: 600; padding: 8px 14px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e8e8ed;
+  }
+  .chip b { color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .url { position: absolute; left: 64px; bottom: 44px; font-size: 18px; color: var(--muted); }
+
+  /* The windows: a fanned stack, the Store at the back, the Library in front. */
+  .stage { position: absolute; left: 560px; top: 0; width: 640px; height: 630px; perspective: 1600px; }
+  .win {
+    position: absolute; width: 560px; border-radius: 14px; overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.6);
+  }
+  .win img { display: block; width: 100%; }
+  .store { left: 120px; top: 40px; transform: rotateY(-14deg) rotateZ(4deg); opacity: 0.9; }
+  .steam { left: 70px; top: 160px; transform: rotateY(-14deg) rotateZ(1deg); }
+  .library { left: 30px; top: 290px; transform: rotateY(-14deg) rotateZ(-2deg); }
+  .profiles {
+    position: absolute; right: 26px; top: 238px; width: 228px; border-radius: 14px; overflow: hidden;
+    border: 1px solid rgba(224, 161, 90, 0.55);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(224, 161, 90, 0.25);
+    transform: rotateZ(3deg);
+  }
+  .profiles img { display: block; width: 100%; }
+  .label {
+    position: absolute; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 5px 10px; border-radius: 999px; background: rgba(5, 5, 6, 0.75); color: var(--accent-2);
+    border: 1px solid rgba(224, 161, 90, 0.4);
+  }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand"><img src="public/icon-512.png" alt="">BetterWhisky</div>
+    <h1>Windows games,<br><span>at home on your Mac.</span></h1>
+    <div class="chips">
+      <div class="chip"><b>◆</b>Steam Library</div>
+      <div class="chip"><b>◆</b>Steam Store</div>
+      <div class="chip"><b>◆</b>Mod profiles</div>
+      <div class="chip"><b>◆</b>DirectX on Metal</div>
+      <div class="chip"><b>◆</b>Launchers that work</div>
+      <div class="chip"><b>◆</b>Built-in troubleshooter</div>
+    </div>
+  </div>
+  <div class="url">whisky.jasonforreels.com · Free for Apple Silicon Macs</div>
+
+  <div class="stage">
+    <div class="win store"><img src="public/images/app-store.png" alt=""></div>
+    <div class="win steam"><img src="public/images/app-steam-library.png" alt=""></div>
+    <div class="win library"><img src="public/images/app-library.png" alt=""></div>
+    <div class="profiles"><img src="public/images/mod-settings.png" alt=""></div>
+  </div>
+</body>
+</html>
