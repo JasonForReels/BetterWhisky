@@ -279,10 +279,10 @@ public enum ModCompatibility {
             let files = clashes.filter { !isReadingFile($0) }
             if !notes.isEmpty {
                 report.add(.info, "Both include \(list(notes)), a text file for reading that the game doesn't use. "
-                    + "\(name)'s copy is shown, and \(owner.name)'s comes back if you remove \(name).")
+                    + "\(possessive(name)) copy is shown, and \(possessive(owner.name)) comes back if you remove \(name).")
             }
             if !files.isEmpty {
-                report.add(.warning, "Replaces \(owner.name)'s \(list(files)). BetterWhisky keeps \(owner.name)'s "
+                report.add(.warning, "Replaces \(possessive(owner.name)) \(list(files)). BetterWhisky keeps \(possessive(owner.name)) "
                     + "copy and puts it back if you remove \(name).")
             }
         }
@@ -295,6 +295,11 @@ public enum ModCompatibility {
         if ["txt", "md", "rtf", "pdf", "html", "htm"].contains(ext) { return true }
         return ["readme", "license", "licence", "changelog", "changes", "notice", "credits"]
             .contains((file as NSString).deletingPathExtension)
+    }
+
+    /// "StellarRoles'" rather than "StellarRoles's".
+    static func possessive(_ name: String) -> String {
+        name.lowercased().hasSuffix("s") ? "\(name)'" : "\(name)'s"
     }
 
     static func list(_ paths: [String]) -> String {
