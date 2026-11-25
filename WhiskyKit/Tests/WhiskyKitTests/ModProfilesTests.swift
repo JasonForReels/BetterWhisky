@@ -98,4 +98,18 @@ import Testing
         )
         #expect(result.gameFolder.path.hasSuffix("Among Us Mods/Chaos/game"))
     }
+
+    @Test func emptyProfileIsListedAndRemovable() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ModEmpty-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let game = root.appending(path: "Among Us")
+        try FileManager.default.createDirectory(at: game, withIntermediateDirectories: true)
+        try Data().write(to: game.appending(path: "Among Us.exe"))
+
+        let copy = try ModProfiles.create("Stellar Night", game: game)
+        let exe = copy.appending(path: "Among Us.exe").path(percentEncoded: false)
+        #expect(FileManager.default.fileExists(atPath: exe))
+        #expect(ModInstaller.installedModFolders(forGame: game).map(\.name) == ["Stellar Night"])
+        #expect(throws: ModProfileError.self) { try ModProfiles.create("Stellar Night", game: game) }
+    }
 }

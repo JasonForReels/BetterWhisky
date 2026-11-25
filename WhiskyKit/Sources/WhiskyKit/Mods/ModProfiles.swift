@@ -31,10 +31,33 @@ public enum ModProfileError: LocalizedError {
 }
 
 /// Profiles: several modded copies of one game, each in its own
-/// `<Game> Mods/<Profile>/game` folder with its own main mod and add-ons.
-/// The first one is made by installing the mod; more are clones of an
-/// existing one (on APFS a clone shares storage until either side changes).
+/// `<Game> Mods/<Profile>/game` folder with any mix of mods, each of which
+/// can be switched on or off. A profile starts as a clean copy of the game
+/// (``create(_:game:)``) or a clone of another one; on APFS either shares
+/// storage with what it was made from until one side changes.
 public enum ModProfiles {
+    /// Makes an empty profile: a clean copy of the game with no mods yet.
+    /// Returns the new profile's game folder.
+    @discardableResult
+    public static func create(_ name: String, game gameFolder: URL) throws -> URL {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw ModProfileError.emptyName }
+        let folder = ModInstaller.modFolder(for: trimmed, game: gameFolder)
+        guard !FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) else {
+            throw ModProfileError.nameTaken(trimmed)
+        }
+        return try ModInstaller.frozenCopy(of: gameFolder, for: trimmed)
+    }
+
+    /// Moves a profile, with all its mods, to the Trash.
+    public static func remove(_ copy: URL) throws {
+        let folder = profileFolder(of: copy)
+        try FileManager.default.trashItem(at: folder, resultingItemURL: nil)
+        let root = folder.deletingLastPathComponent()
+        let left = (try? FileManager.default.contentsOfDirectory(atPath: root.path(percentEncoded: false))) ?? []
+        if left.allSatisfy({ $0.hasPrefix(".") }) { try? FileManager.default.removeItem(at: root) }
+    }
+
     /// The profile's folder: `<Game> Mods/<Profile>`, which holds `game`.
     static func profileFolder(of copy: URL) -> URL { copy.deletingLastPathComponent() }
 

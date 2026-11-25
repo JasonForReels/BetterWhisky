@@ -39,7 +39,7 @@ public enum ModInstallError: LocalizedError {
         switch self {
         case .unsafePath(let path): return "The archive has a file outside the game folder: \(path)"
         case .extractFailed(let message): return "Couldn't unzip the mod: \(message)"
-        case .unsupportedFile(let name): return "\(name) isn't a .zip or .dll file."
+        case .unsupportedFile(let name): return "\(name) isn't a .zip, a .dll or a folder."
         }
     }
 }
@@ -75,19 +75,20 @@ public enum ModInstaller {
         )
     }
 
-    /// Installs a local `.zip` or `.dll` the user dropped onto the game.
+    /// Installs a local `.zip`, `.dll` or mod folder the user dropped onto the game.
     public static func installLocal(
         file: URL, rule: ModInstallRule? = nil, gameExecutable: URL
     ) async throws -> ModInstallResult {
         let ext = file.pathExtension.lowercased()
-        guard ext == "zip" || ext == "dll" else { throw ModInstallError.unsupportedFile(file.lastPathComponent) }
+        guard isLocalModSource(file) else { throw ModInstallError.unsupportedFile(file.lastPathComponent) }
         let rule = rule ?? ModInstallRule(
-            mode: ext == "zip" ? .extract : .copyFile,
+            mode: ext == "dll" ? .copyFile : .extract,
             subpath: ext == "dll" && hasBepInEx(gameExecutable.deletingLastPathComponent()) ? "BepInEx/plugins" : ""
         )
         let name = file.deletingPathExtension().lastPathComponent
         return try await installFile(
-            file, version: "local", name: name, repo: "local/\(name)", rule: rule, gameExecutable: gameExecutable
+            file, version: "local", name: name, repo: "local/\(name)", rule: rule, gameExecutable: gameExecutable,
+            keepExisting: true
         )
     }
 
@@ -137,14 +138,14 @@ public enum ModInstaller {
     // swiftlint:disable:next function_parameter_count
     static func installFile(
         _ file: URL, version: String, name: String, repo: String,
-        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil
+        rule: ModInstallRule, gameExecutable: URL, profile: String? = nil, keepExisting: Bool = false
     ) async throws -> ModInstallResult {
         let gameFolder = try targetFolder(rule: rule, name: name, gameExecutable: gameExecutable, profile: profile)
         let staged = try await stage(file, rule: rule, gameFolder: gameFolder)
         defer { discard(staged) }
         return try installStaged(
             staged, version: version, name: name, repo: repo, rule: rule,
-            gameExecutable: gameExecutable, gameFolder: gameFolder
+            gameExecutable: gameExecutable, gameFolder: gameFolder, keepExisting: keepExisting
         )
     }
 
@@ -164,6 +165,10 @@ public enum ModInstaller {
         return folders.sorted { $0.lastPathComponent < $1.lastPathComponent }.compactMap { folder in
             let copy = folder.appending(path: "game")
             if let mod = installedMods(in: copy).first { return (copy, mod.name) }
+            // A profile with no mods yet is still a profile.
+            if FileManager.default.fileExists(atPath: copy.path(percentEncoded: false)) {
+                return (copy, folder.lastPathComponent)
+            }
             return installedMods(in: folder).first.map { (folder, $0.name) }
         }
     }
@@ -181,16 +186,37 @@ public enum ModInstaller {
         return copy
     }
 
+    /// Whether `url` is something a local install takes: a `.zip`, a `.dll` or a folder.
+    public static func isLocalModSource(_ url: URL) -> Bool {
+        isFolder(url) || ["zip", "dll"].contains(url.pathExtension.lowercased())
+    }
+
+    static func isFolder(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
     static func extract(_ zip: URL, into folder: URL, stripTopFolder: Bool) async throws -> URL {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        if isFolder(zip) {
+            // A mod folder: copied whole, then unwrapped like a zip's top folder,
+            // so its contents land in the game unless it's a folder the game uses.
+            try FileManager.default.copyItem(at: zip, to: folder.appending(path: zip.lastPathComponent))
+            // Twice: the folder itself, then a version folder inside it.
+            return unwrap(unwrap(folder))
+        }
         try await run("/usr/bin/ditto", [
             "-x", "-k", zip.path(percentEncoded: false), folder.path(percentEncoded: false)
         ])
         try? FileManager.default.removeItem(at: folder.appending(path: "__MACOSX"))
 
         guard stripTopFolder else { return folder }
-        let entries = try FileManager.default
-            .contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isDirectoryKey])
+        return unwrap(folder)
+    }
+
+    /// The single wrapper folder inside `folder`, or `folder` itself.
+    static func unwrap(_ folder: URL) -> URL {
+        let entries = ((try? FileManager.default
+            .contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isDirectoryKey])) ?? [])
             .filter { !$0.lastPathComponent.hasPrefix(".") }
         // Only strip a wrapper folder, never a folder the game itself uses.
         if entries.count == 1, let only = entries.first,

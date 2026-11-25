@@ -69,6 +69,51 @@ import Testing
         ))
     }
 
+    @Test func modFolderInstallsItsContents() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ModFolder-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let game = root.appending(path: "game")
+        try FileManager.default.createDirectory(at: game, withIntermediateDirectories: true)
+        // A mod folder as it comes unzipped: StellarRoles/StellarRoles v1/BepInEx/plugins/…
+        let mod = root.appending(path: "StellarRoles")
+        let plugins = mod.appending(path: "StellarRoles v1/BepInEx/plugins")
+        try FileManager.default.createDirectory(at: plugins, withIntermediateDirectories: true)
+        try Data("dll".utf8).write(to: plugins.appending(path: "StellarRoles.dll"))
+        try Data("loader".utf8).write(to: mod.appending(path: "StellarRoles v1/winhttp.dll"))
+
+        #expect(ModInstaller.isLocalModSource(mod))
+        let result = try await ModInstaller.installLocal(
+            file: mod, gameExecutable: game.appending(path: "Among Us.exe")
+        )
+        #expect(Set(result.mod.files) == ["BepInEx/plugins/StellarRoles.dll", "winhttp.dll"])
+        #expect(result.mod.name == "StellarRoles")
+        // The source folder is copied, never moved.
+        let source = plugins.appending(path: "StellarRoles.dll").path(percentEncoded: false)
+        #expect(FileManager.default.fileExists(atPath: source))
+    }
+
+    @Test func localInstallKeepsOtherModsFiles() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ModKeep-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let game = root.appending(path: "game")
+        try FileManager.default.createDirectory(at: game, withIntermediateDirectories: true)
+        let first = root.appending(path: "TownOfUs")
+        try FileManager.default.createDirectory(at: first, withIntermediateDirectories: true)
+        try Data("town of us loader".utf8).write(to: first.appending(path: "winhttp.dll"))
+        _ = try await ModInstaller.installLocal(file: first, gameExecutable: game.appending(path: "Among Us.exe"))
+        let mod = root.appending(path: "Other")
+        try FileManager.default.createDirectory(at: mod, withIntermediateDirectories: true)
+        try Data("other loader".utf8).write(to: mod.appending(path: "winhttp.dll"))
+        try Data("new".utf8).write(to: mod.appending(path: "Other.txt"))
+
+        let result = try await ModInstaller.installLocal(
+            file: mod, gameExecutable: game.appending(path: "Among Us.exe")
+        )
+        #expect(result.mod.files == ["Other.txt"])
+        let loader = try String(contentsOf: game.appending(path: "winhttp.dll"), encoding: .utf8)
+        #expect(loader == "town of us loader")
+    }
+
     @Test func zipWithLoaderIsNotTreatedAsPlugins() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "ModLoader-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }

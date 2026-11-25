@@ -55,10 +55,9 @@ public extension ModInstaller {
         return try await stage(file, rule: rule, gameFolder: gameFolder)
     }
 
-    /// Unpacks a local `.zip` or `.dll` for checking, as ``installLocal`` would install it.
+    /// Unpacks a local `.zip`, `.dll` or mod folder for checking, as ``installLocal`` would install it.
     public static func stageLocal(file: URL, rule: ModInstallRule, into gameFolder: URL) async throws -> StagedMod {
-        let ext = file.pathExtension.lowercased()
-        guard ext == "zip" || ext == "dll" else { throw ModInstallError.unsupportedFile(file.lastPathComponent) }
+        guard isLocalModSource(file) else { throw ModInstallError.unsupportedFile(file.lastPathComponent) }
         return try await stage(file, rule: rule, gameFolder: gameFolder)
     }
 
@@ -99,13 +98,14 @@ public extension ModInstaller {
     /// (game-folder paths: the profile's loader and shared plugins it keeps).
     public static func installStaged( // swiftlint:disable:this function_parameter_count
         _ staged: StagedMod, version: String, name: String, repo: String, rule: ModInstallRule,
-        gameExecutable: URL, gameFolder: URL, skipping: Set<String> = []
+        gameExecutable: URL, gameFolder: URL, skipping: Set<String> = [], keepExisting: Bool = false
     ) throws -> ModInstallResult {
         let target = try resolve(staged.prefix, in: gameFolder)
         // Replacing an older copy of the same mod: take it out first.
         if let previous = installedMods(in: gameFolder).first(where: { $0.repo == repo }) {
             try uninstall(previous, from: gameFolder)
         }
+        if keepExisting { staged.keepingExisting(in: gameFolder, except: repo) }
         for path in skipping {
             try? FileManager.default.removeItem(at: staged.file(atGamePath: path))
         }

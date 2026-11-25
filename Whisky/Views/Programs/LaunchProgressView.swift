@@ -27,6 +27,9 @@ struct LaunchRequest: Identifiable {
     let artworkURL: URL?
     let monitor: ModLaunchMonitor
     let steamWasRunning: Bool
+    /// The mod's first start in this profile: BepInEx builds its game files
+    /// first, which takes a few minutes once.
+    var firstStart = false
 }
 
 /// Shown while a Steam game starts. Each step is ticked off from the log that
@@ -51,8 +54,12 @@ struct LaunchProgressView: View {
             Step(id: .launch, title: "Steam is starting \(request.title)")
         ]
         if let modName = request.modName {
-            let detail = progress.stage == .mod && progress.pluginsTotal > 0
+            let plugins = progress.stage == .mod && progress.pluginsTotal > 0
                 ? "\(progress.pluginsLoaded) of \(progress.pluginsTotal) plugins" : nil
+            let detail = request.firstStart && progress.stage <= .mod
+                ? [plugins, "First start: getting the game ready for the mod. This takes a few minutes, once."]
+                    .compactMap { $0 }.joined(separator: " · ")
+                : plugins
             steps.append(Step(id: .mod, title: "Loading \(modName)", detail: detail))
         }
         steps.append(Step(id: .window, title: "Opening the game"))
@@ -68,6 +75,13 @@ struct LaunchProgressView: View {
                 }
             }
             .padding(.horizontal, 4)
+            if request.firstStart {
+                Text("If the game stops on a Privacy Policy screen, quit it and press Play again: "
+                    + "BetterWhisky signs the mod in with your account before the next start.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Text(elapsed)
                     .font(.callout.monospacedDigit())

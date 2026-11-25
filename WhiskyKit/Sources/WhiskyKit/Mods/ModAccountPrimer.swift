@@ -140,6 +140,7 @@ public enum ModAccountPrimer {
     public static func prepare(
         appId: Int, gameFolder: URL, modName: String?, bottle: Bottle, timeout: Duration = .seconds(600)
     ) async -> Bool {
+        seedDiscoveredSaves(bottleURL: bottle.url)
         guard let save = ModPreset.named(modName)?.accountSave else { return true }
         guard let folder = saveFolder(save, bottleURL: bottle.url) else { return false }
         if !plainSaveReady(save, in: folder) {
@@ -161,6 +162,45 @@ public enum ModAccountPrimer {
         } catch {
             logger.error("Couldn't copy the account save: \(error.localizedDescription)")
             return false
+        }
+    }
+
+    /// The suffixes mods have started their own saves under, found from the
+    /// files themselves: `settings.amogus_SR` means a mod uses `_SR`. Mods
+    /// don't say which they use, but each writes its settings copy on its
+    /// first start, before the account screen it then hangs on.
+    static func discoveredSuffixes(_ save: ModAccountSave, in folder: URL) -> [String] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? []
+        let suffixes = names.flatMap { name in
+            save.files.compactMap { base -> String? in
+                guard name.hasPrefix(base + "_"), name.count > base.count + 1 else { return nil }
+                return String(name.dropFirst(base.count))
+            }
+        }
+        return Array(Set(suffixes)).sorted()
+    }
+
+    /// Gives every mod that has started a save of its own (any suffix, not
+    /// just the presets') a copy of the plain game's signed-in account, so it
+    /// doesn't stop on the Privacy Policy screen as a new player. A mod that is
+    /// signed in already keeps its save. Nothing happens until the plain game
+    /// has signed in. Returns the suffixes it gave an account.
+    @discardableResult
+    public static func seedDiscoveredSaves(bottleURL: URL, save: ModAccountSave = .amongUs(suffix: "")) -> [String] {
+        guard let folder = saveFolder(save, bottleURL: bottleURL), plainSaveReady(save, in: folder),
+              let account = save.files.first else { return [] }
+        return discoveredSuffixes(save, in: folder).filter { suffix in
+            guard !isSignedIn(folder.appending(path: account + suffix)) else { return false }
+            var modSave = save
+            modSave.suffix = suffix
+            do {
+                try seedModSave(modSave, in: folder)
+                logger.info("Gave the \(suffix, privacy: .public) mod save the game's account")
+                return true
+            } catch {
+                logger.error("Couldn't copy the account save: \(error.localizedDescription)")
+                return false
+            }
         }
     }
 

@@ -45,6 +45,22 @@ public struct StagedMod: Sendable {
         .sorted()
     }
 
+    /// Drops staged files that another mod in `gameFolder` already put there,
+    /// so installing never replaces another mod's files. The game's own files
+    /// are still replaced (and backed up). Returns the game paths it dropped.
+    @discardableResult
+    public func keepingExisting(in gameFolder: URL, except repo: String? = nil) -> [String] {
+        let owned = Set(ModInstaller.installedMods(in: gameFolder)
+            .filter { $0.repo != repo }
+            .flatMap(\.files)
+            .map { $0.lowercased() })
+        return gamePaths.filter { path in
+            guard owned.contains(path.lowercased()) else { return false }
+            try? FileManager.default.removeItem(at: file(atGamePath: path))
+            return true
+        }
+    }
+
     /// The file at a game-folder path.
     func file(atGamePath path: String) -> URL {
         let relative = prefix.isEmpty ? path : String(path.dropFirst(prefix.count + 1))

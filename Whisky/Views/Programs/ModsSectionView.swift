@@ -36,33 +36,36 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     @State private var dropTargeted = false
     @State private var activeMod: URL?
     @State private var showAddSheet = false
+    @State private var showFilePicker = false
     @State private var launchRequest: LaunchRequest?
     @State private var profiles: [Profile] = []
     @State private var nameRequest: ProfileNameRequest?
     @State private var pendingCheck: PendingCheck?
     /// The profile Add from GitHub puts its mod into, when started from a profile's menu.
     @State private var addTarget: Profile?
+    /// The profile shown below the profile picker.
+    @State private var selectedProfileID: URL?
     /// Bumped to re-read companion apps after an install or a switch.
     @State private var companionsChanged = 0
     @Binding var modsChanged: Int
 
-    /// A modded copy of the game with a preset's mod in it, and its add-ons.
+    /// A profile: its own copy of the game holding any mix of mods, each of
+    /// which can be switched on or off. Like a profile on a streaming service,
+    /// you pick one, and Play starts the game with that profile's mods.
     struct Profile: Identifiable {
         var id: URL { folder }
         let folder: URL
         let name: String
-        let mod: InstalledMod
-        let preset: ModPreset
-        let addOns: [InstalledMod]
+        let mods: [InstalledMod]
     }
 
-    /// Naming a profile, for a duplicate or a rename.
-    enum ProfileNameKind { case duplicate, rename }
+    /// Naming a profile: a new empty one, a copy of one, or a rename.
+    enum ProfileNameKind { case create, duplicate, rename }
 
     struct ProfileNameRequest: Identifiable {
         let id = UUID()
         let kind: ProfileNameKind
-        let profile: Profile
+        let profile: Profile?
         var name: String
     }
 
@@ -91,18 +94,10 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
 
     var body: some View {
         Section(isExpanded: $isExpanded) {
-            ForEach(presets) { preset in
-                let own = profiles.filter { $0.preset.repo == preset.repo }
-                if own.isEmpty {
-                    presetRow(preset)
-                } else {
-                    ForEach(own) { profile in
-                        profileRow(profile)
-                        ForEach(profile.addOns) { mod in
-                            addOnRow(mod, in: profile)
-                        }
-                    }
-                }
+            profilesBlock
+            // Mods that don't use profiles (they go into the game itself).
+            ForEach(presets.filter { !$0.install.frozenCopy }) { preset in
+                presetRow(preset)
             }
             ForEach(installed.filter { mod in !presets.contains { $0.repo == mod.repo } }) { mod in
                 otherModRow(mod)
@@ -110,7 +105,6 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             ForEach(ModCompanion.companions(steamAppId: steamAppId)) { companion in
                 companionRow(companion)
             }
-            addRow
             if busy != nil || message != nil {
                 statusRow
             }
@@ -141,86 +135,253 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
 
     // MARK: Profiles
 
-    private func profileRow(_ profile: Profile) -> some View {
-        let release = latestVersions[profile.preset.repo]
-        let isOn = isActive(profile.folder)
-        let update = release.flatMap { $0.tagName == profile.mod.version ? nil : $0.tagName }
-        let onCount = profile.addOns.filter { ModInstaller.isEnabled($0, in: profile.folder) }.count
-        return HStack(spacing: 12) {
-            modIcon
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(profile.name)
-                    if isOn {
-                        Circle().fill(.green).frame(width: 6, height: 6)
-                        Text("On").font(.caption).foregroundStyle(.secondary)
-                    }
+    private var selectedProfile: Profile? {
+        profiles.first { $0.folder == selectedProfileID }
+            ?? profiles.first { isActive($0.folder) }
+            ?? profiles.first
+    }
+
+    /// The preset Play uses to start a profile: the first of its mods that's a
+    /// preset, or the game's own profile preset (the Steam launch) when none is.
+    private func launchPreset(for profile: Profile) -> ModPreset? {
+        profile.mods.lazy.compactMap { mod in presets.first { $0.repo == mod.repo } }.first
+            ?? presets.first { $0.install.frozenCopy }
+            ?? presets.first
+    }
+
+    /// The profile picker, then the picked profile's mods.
+    private var profilesBlock: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(profiles.isEmpty ? "Make a profile to start modding" : "Profiles")
+                .font(.headline)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(profiles) { profileTile($0) }
+                    newProfileTile
                 }
-                Text([
-                    profile.name == profile.mod.name ? nil : profile.mod.name,
-                    "Version \(profile.mod.version)",
-                    update.map { "\($0) available" },
-                    profile.addOns.isEmpty ? nil
-                        : "\(onCount) of \(profile.addOns.count) add-on\(profile.addOns.count == 1 ? "" : "s") on"
-                ].compactMap { $0 }.joined(separator: " · "))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .padding(.vertical, 4)
             }
-            Spacer(minLength: 12)
-            if isOn {
-                Button("Play") { play(profile.preset, modFolder: profile.folder) }
-                    .disabled(busy != nil)
+            if let profile = selectedProfile {
+                profileDetail(profile)
             } else {
-                Button("Turn On") { switchOn(profile.folder) }
-                    .disabled(busy != nil)
+                Text("A profile is its own copy of the game with the mods you pick, like StellarRoles with "
+                    + "LevelImposter, or Town of Us: Mira on its own. Make one, then add mods to it.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            profileMenu(profile, isOn: isOn, update: update)
         }
         .padding(.vertical, 4)
     }
 
-    private func profileMenu(_ profile: Profile, isOn: Bool, update: String?) -> some View {
-            Menu {
-                if let update {
-                    Button("Update to \(update)") { installPreset(profile.preset, into: profile) }
-                }
-                if isOn {
-                    Button("Turn Off") { turnOffMods() }
-                }
-                Menu("Add Mod") {
-                    ForEach(addablePresets(for: profile)) { preset in
-                        Button(preset.name) { addPreset(preset, to: profile) }
+    private func profileTile(_ profile: Profile) -> some View {
+        let isSelected = profile.id == selectedProfile?.id
+        let isOn = isActive(profile.folder)
+        return Button {
+            selectedProfileID = profile.folder
+        } label: {
+            VStack(spacing: 6) {
+                ProfileAvatar(name: profile.name, size: 56)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 3)
+                            .padding(-4)
                     }
-                    if !addablePresets(for: profile).isEmpty { Divider() }
-                    Button("From GitHub…") {
-                        addTarget = profile
-                        showAddSheet = true
+                    .overlay(alignment: .bottomTrailing) {
+                        if isOn {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.white, .green)
+                                .offset(x: 6, y: 6)
+                        }
                     }
-                }
-                Divider()
-                Button("New Profile from This…") {
-                    nameRequest = ProfileNameRequest(kind: .duplicate, profile: profile, name: "\(profile.name) 2")
-                }
-                Button("Rename…") {
-                    nameRequest = ProfileNameRequest(kind: .rename, profile: profile, name: profile.name)
-                }
-                Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([profile.folder])
-                }
-                Divider()
-                Button("Remove Profile", role: .destructive) { remove(profile.mod, in: profile.folder) }
-            } label: {
-                Image(systemName: "ellipsis")
+                Text(profile.name)
+                    .font(.caption.weight(isSelected ? .semibold : .regular))
+                    .lineLimit(1)
+                    .frame(width: 76)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .disabled(busy != nil)
+            .padding(.top, 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(profile.name) profile\(isOn ? ", on" : "")")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .help("\(profile.name): \(profile.mods.map(\.name).joined(separator: ", ").nilIfEmpty ?? "no mods yet")")
     }
 
-    /// An add-on inside a profile, with a switch that parks its plugins
-    /// outside BepInEx/plugins rather than deleting them.
-    private func addOnRow(_ mod: InstalledMod, in profile: Profile) -> some View {
+    private var newProfileTile: some View {
+        Button {
+            nameRequest = ProfileNameRequest(kind: .create, profile: nil, name: "")
+        } label: {
+            VStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(.secondary, style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+                    .frame(width: 56, height: 56)
+                    .overlay { Image(systemName: "plus").font(.title2).foregroundStyle(.secondary) }
+                Text("New Profile").font(.caption).foregroundStyle(.secondary).frame(width: 76)
+            }
+            .padding(.top, 4)
+        }
+        .buttonStyle(.plain)
+        .disabled(busy != nil)
+        .help("Make a new profile: a fresh copy of the game for its own set of mods")
+    }
+
+    /// The picked profile: Play or Turn On, then every mod in it with its switch.
+    private func profileDetail(_ profile: Profile) -> some View {
+        let isOn = isActive(profile.folder)
+        let onCount = profile.mods.filter { ModInstaller.isEnabled($0, in: profile.folder) }.count
+        let summary = profile.mods.isEmpty ? "No mods yet"
+            : "\(onCount) of \(profile.mods.count) mod\(profile.mods.count == 1 ? "" : "s") on"
+        return VStack(alignment: .leading, spacing: 10) {
+            profileHeader(profile, isOn: isOn, summary: summary)
+            Divider()
+            Text("Mods in \(profile.name)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if profile.mods.isEmpty {
+                Text("No mods yet. Add as many as you like: they all load together, and each has a switch.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(profile.mods) { modRow($0, in: profile) }
+            }
+            addModRow(profile)
+        }
+        .padding(12)
+        .background(
+            isOn ? AnyShapeStyle(Color.accentColor.opacity(0.08)) : AnyShapeStyle(.quinary),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(dropTargeted ? Color.accentColor : isOn ? Color.accentColor.opacity(0.6) : .clear,
+                              style: StrokeStyle(lineWidth: 1, dash: dropTargeted ? [4] : []))
+        }
+        .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
+            for provider in providers {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url else { return }
+                    Task { @MainActor in
+                        addTarget = profile
+                        installDropped(url)
+                    }
+                }
+            }
+            return !providers.isEmpty
+        }
+    }
+
+    private func profileHeader(_ profile: Profile, isOn: Bool, summary: String) -> some View {
+        HStack(spacing: 12) {
+            ProfileAvatar(name: profile.name, size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(profile.name).font(.headline)
+                    statusBadge(isOn ? "On" : "Off", color: isOn ? .green : .secondary)
+                }
+                Text(summary).font(.caption).foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Profile \(profile.name), \(isOn ? "on" : "off"), \(summary)")
+            Spacer(minLength: 12)
+            if isOn {
+                Button("Play", systemImage: "play.fill") {
+                    if let preset = launchPreset(for: profile) { play(preset, modFolder: profile.folder) }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(busy != nil || profile.mods.isEmpty)
+                .help("Start the game with \(profile.name)'s mods")
+            } else {
+                Button("Turn On") { switchOn(profile.folder) }
+                    .disabled(busy != nil)
+                    .help("Make \(profile.name) the profile Play starts")
+            }
+            profileMenu(profile, isOn: isOn)
+        }
+    }
+
+    /// Adding to the picked profile: a known mod, a GitHub repo, or a file or folder.
+    private func addModRow(_ profile: Profile) -> some View {
+        HStack(spacing: 8) {
+            Menu("Add Mod", systemImage: "plus") {
+                ForEach(addablePresets(for: profile)) { preset in
+                    Button(preset.name) { addPreset(preset, to: profile) }
+                }
+                if !addablePresets(for: profile).isEmpty { Divider() }
+                Button("From GitHub…", systemImage: "link") {
+                    addTarget = profile
+                    showAddSheet = true
+                }
+                Button("From a File or Folder…", systemImage: "doc.badge.plus") {
+                    addTarget = profile
+                    showFilePicker = true
+                }
+            }
+            .fixedSize()
+            .disabled(busy != nil)
+            .help("Add a mod to \(profile.name)")
+            Spacer()
+            Label("or drop a .zip, .dll or folder here", systemImage: "arrow.down.doc")
+                .font(.caption)
+                .foregroundStyle(dropTargeted ? Color.accentColor : .secondary)
+        }
+        .padding(.top, 4)
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.zip, .folder, UTType(filenameExtension: "dll") ?? .data],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                Task { @MainActor in
+                    for url in urls { await installPicked(url) }
+                    if pendingCheck == nil { addTarget = nil }
+                }
+            case .failure(let error):
+                addTarget = nil
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    private func profileMenu(_ profile: Profile, isOn: Bool) -> some View {
+        Menu {
+            if isOn {
+                Button("Turn Off (Play Without Mods)") { turnOffMods() }
+                Divider()
+            }
+            Button("New Profile from This…") {
+                nameRequest = ProfileNameRequest(kind: .duplicate, profile: profile, name: "\(profile.name) 2")
+            }
+            Button("Rename…") {
+                nameRequest = ProfileNameRequest(kind: .rename, profile: profile, name: profile.name)
+            }
+            Button("Show in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([profile.folder])
+            }
+            Divider()
+            Button("Move Profile to Trash", role: .destructive) { removeProfile(profile) }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(busy != nil)
+        .accessibilityLabel("More for \(profile.name)")
+        .help("Turn off, copy, rename, show in Finder or remove")
+    }
+
+    private func statusBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .foregroundStyle(color)
+            .background(color.opacity(0.15), in: Capsule())
+    }
+
+    /// A mod in a profile, with a switch that parks its plugins outside
+    /// BepInEx/plugins rather than deleting them, and its update when there is one.
+    private func modRow(_ mod: InstalledMod, in profile: Profile) -> some View {
         let enabled = Binding(
             get: { ModInstaller.isEnabled(mod, in: profile.folder) },
             set: { isOn in
@@ -233,19 +394,22 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                 Task { await refresh() }
             }
         )
+        let preset = presets.first { $0.repo == mod.repo }
+        let update = preset.flatMap { latestVersions[$0.repo] }
+            .flatMap { $0.tagName == mod.version ? nil : $0.tagName }
         return HStack(spacing: 12) {
-            Image(systemName: "arrow.turn.down.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            Image(systemName: "puzzlepiece.extension")
+                .foregroundStyle(.secondary)
                 .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(mod.name)
-                Text("Version \(mod.version)").font(.caption).foregroundStyle(.secondary)
-            }
-            .opacity(enabled.wrappedValue ? 1 : 0.5)
+            modLabel(mod, update: update, isOn: enabled.wrappedValue)
             Spacer(minLength: 12)
+            if let update, let preset {
+                Button("Update") { addPreset(preset, to: profile) }
+                    .disabled(busy != nil)
+                    .help("Update \(mod.name) to \(update) in \(profile.name)")
+            }
             if ModInstaller.canToggle(mod) {
-                Toggle("On", isOn: enabled)
+                Toggle("\(mod.name) on", isOn: enabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
@@ -254,24 +418,53 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             }
             Menu {
                 // Just this mod: the profile and its other mods stay.
-                Button("Remove", role: .destructive) { removeAddOn(mod, from: profile) }
+                Button("Remove from \(profile.name)", role: .destructive) { removeAddOn(mod, from: profile) }
             } label: {
                 Image(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .accessibilityLabel("More for \(mod.name)")
         }
         .padding(.vertical, 2)
     }
 
+    private func modLabel(_ mod: InstalledMod, update: String?, isOn: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(mod.name)
+                if let update { statusBadge("Update: \(update)", color: .orange) }
+            }
+            Text(mod.version == "local" ? "From a file" : "Version \(mod.version)")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .opacity(isOn ? 1 : 0.5)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(mod.name), \(isOn ? "on" : "off")"
+            + (update.map { ", update \($0) available" } ?? ""))
+    }
+
+    private func removeProfile(_ profile: Profile) {
+        do {
+            if isActive(profile.folder) { turnOffMods() }
+            try ModProfiles.remove(profile.folder)
+            if selectedProfileID == profile.folder { selectedProfileID = nil }
+            message = "Moved \(profile.name) to the Trash."
+        } catch {
+            message = error.localizedDescription
+        }
+        Task { await refresh() }
+    }
+
     private func nameSheet(_ request: ProfileNameRequest) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(request.kind == .duplicate ? "New profile from \(request.profile.name)" : "Rename profile")
-                .font(.headline)
-            if request.kind == .duplicate {
-                Text("The new profile starts with the same mod and add-ons. Change its add-ons without "
-                    + "touching \(request.profile.name), and pick which one to play with Turn On.")
+            Text(nameSheetTitle(request)).font(.headline)
+            if request.kind != .rename {
+                Text(request.kind == .create
+                    ? "A new profile is a fresh copy of the game. Add any mods to it, and they all load together."
+                    : "The new profile starts with the same mods. Change them without touching "
+                        + "\(request.profile?.name ?? "the original"), and pick which profile to play with Turn On.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -286,7 +479,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                 Spacer()
                 Button("Cancel", role: .cancel) { nameRequest = nil }
                     .keyboardShortcut(.cancelAction)
-                Button(request.kind == .duplicate ? "Create" : "Rename") { applyName(nameRequest ?? request) }
+                Button(request.kind == .rename ? "Rename" : "Create") { applyName(nameRequest ?? request) }
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -294,21 +487,37 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         .frame(width: 400)
     }
 
+    private func nameSheetTitle(_ request: ProfileNameRequest) -> String {
+        switch request.kind {
+        case .create: return "New profile"
+        case .duplicate: return "New profile from \(request.profile?.name ?? "this one")"
+        case .rename: return "Rename profile"
+        }
+    }
+
     private func applyName(_ request: ProfileNameRequest) {
         nameRequest = nil
-        let wasOn = isActive(request.profile.folder)
+        let wasOn = request.profile.map { isActive($0.folder) } ?? false
         Task {
-            busy = request.kind == .duplicate ? "Making \(request.name)…" : nil
+            busy = request.kind == .rename ? nil : "Making \(request.name)…"
             defer { busy = nil }
             do {
                 switch request.kind {
+                case .create:
+                    // A clone of the game shares storage with it on APFS, so it's quick.
+                    let game = gameFolder
+                    let copy = try await Task.detached { try ModProfiles.create(request.name, game: game) }.value
+                    selectedProfileID = copy
+                    message = "Made \(request.name). Add mods to it with Add Mod."
                 case .duplicate:
-                    // A clone shares storage with the original on APFS, so it's quick.
-                    let copy = request.profile.folder
-                    try await Task.detached { try ModProfiles.duplicate(copy, as: request.name) }.value
+                    guard let copy = request.profile?.folder else { return }
+                    let made = try await Task.detached { try ModProfiles.duplicate(copy, as: request.name) }.value
+                    selectedProfileID = made
                     message = "Made \(request.name). Turn it on to play with it."
                 case .rename:
-                    let moved = try ModProfiles.rename(request.profile.folder, to: request.name)
+                    guard let profile = request.profile else { return }
+                    let moved = try ModProfiles.rename(profile.folder, to: request.name)
+                    selectedProfileID = moved
                     if wasOn { switchOn(moved) }
                     message = nil
                 }
@@ -430,37 +639,6 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 
-    /// Add from GitHub, or drop a file anywhere on the row.
-    private var addRow: some View {
-        HStack(spacing: 12) {
-            Button("Add from GitHub…", systemImage: "link") { showAddSheet = true }
-                .disabled(busy != nil)
-            Spacer()
-            Label(extensionHost.map { "Drop a .zip or .dll to add to \($0.name)" } ?? "Drop a .zip or .dll",
-                  systemImage: "arrow.down.doc")
-                .font(.caption)
-                .foregroundStyle(dropTargeted ? Color.accentColor : .secondary)
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, dropTargeted ? 8 : 0)
-        .background {
-            if dropTargeted {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4]))
-            }
-        }
-        .contentShape(Rectangle())
-        .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
-            for provider in providers {
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url else { return }
-                    Task { @MainActor in installDropped(url) }
-                }
-            }
-            return !providers.isEmpty
-        }
-    }
-
     private var statusRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             if let busy {
@@ -557,6 +735,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     /// Its BepInEx only loads plugins from its own folder, never the plain game's.
     private var extensionHost: (name: String, folder: URL)? {
         if let addTarget { return (addTarget.name, addTarget.folder) }
+        if let profile = selectedProfile { return (profile.name, profile.folder) }
         var hosts = profiles.filter { ModInstaller.hasBepInEx($0.folder) }
             .map { (name: $0.name, folder: $0.folder) }
         hosts += presets.compactMap { preset -> (name: String, folder: URL)? in
@@ -899,13 +1078,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     private func refresh() async {
         installed = ModInstaller.installedMods(in: gameFolder)
         profiles = ModInstaller.installedModFolders(forGame: gameFolder).compactMap { entry -> Profile? in
+            guard isFrozenCopy(entry.folder) else { return nil }
             let mods = ModInstaller.installedMods(in: entry.folder)
-            guard isFrozenCopy(entry.folder), let main = mods.first,
-                  let preset = presets.first(where: { $0.repo == main.repo && $0.install.frozenCopy })
-            else { return nil }
             return Profile(
-                folder: entry.folder, name: ModProfiles.displayName(of: entry.folder, modName: main.name),
-                mod: main, preset: preset, addOns: mods.filter { $0.repo != main.repo }
+                folder: entry.folder,
+                name: ModProfiles.displayName(of: entry.folder, modName: mods.first?.name ?? entry.name),
+                mods: mods
             )
         }
         if let appId = steamAppId,
@@ -1023,7 +1201,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             do {
                 // A mod that isn't a preset is an add-on for the installed modded copy, if there is one.
                 let isPreset = presets.contains { $0.repo == repo }
-                if !isPreset, let host = extensionHost,
+                if !isPreset || !profiles.isEmpty, let host = extensionHost,
                    let addOn = addOnTarget(rule, fileName: asset.name) {
                     busy = "Checking \(name) against \(host.name)'s mods…"
                     let staged = try await ModInstaller.stage(asset: asset, rule: addOn.rule, into: host.folder)
@@ -1068,27 +1246,43 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
     }
 
+    /// A file chosen with Add from File…: read it while the picker's access lasts.
+    private func installPicked(_ file: URL) async {
+        let scoped = file.startAccessingSecurityScopedResource()
+        defer { if scoped { file.stopAccessingSecurityScopedResource() } }
+        await installLocalFile(file)
+    }
+
     private func installDropped(_ file: URL) {
-        Task {
-            busy = "Installing \(file.lastPathComponent)…"
-            defer { busy = nil }
-            do {
-                if let host = extensionHost, let addOn = addOnTarget(
-                    ModInstallRule(mode: file.pathExtension.lowercased() == "zip" ? .extract : .copyFile, subpath: ""),
-                    fileName: file.lastPathComponent
-                ) {
-                    let name = file.deletingPathExtension().lastPathComponent
-                    let staged = try await ModInstaller.stageLocal(file: file, rule: addOn.rule, into: host.folder)
-                    await checkThenInstall(
-                        staged, name: name, repo: "local/\(name)", version: "local", rule: addOn.rule,
-                        host: host, required: nil
-                    )
-                } else {
-                    finished(try await ModInstaller.installLocal(file: file, gameExecutable: program.url))
+        Task { await installLocalFile(file) }
+    }
+
+    private func installLocalFile(_ file: URL) async {
+        busy = "Installing \(file.lastPathComponent)…"
+        defer { busy = nil }
+        do {
+            if let host = extensionHost, let addOn = addOnTarget(
+                ModInstallRule(mode: file.pathExtension.lowercased() == "dll" ? .copyFile : .extract, subpath: ""),
+                fileName: file.lastPathComponent
+            ) {
+                let name = file.deletingPathExtension().lastPathComponent
+                let staged = try await ModInstaller.stageLocal(file: file, rule: addOn.rule, into: host.folder)
+                // Files the profile already has belong to its other mods: keep them.
+                let kept = staged.keepingExisting(in: host.folder, except: "local/\(name)")
+                await checkThenInstall(
+                    staged, name: name, repo: "local/\(name)", version: "local", rule: addOn.rule,
+                    host: host, required: nil
+                )
+                if !kept.isEmpty {
+                    let note = "Kept \(kept.count) file\(kept.count == 1 ? "" : "s") \(host.name)'s other mods "
+                        + "already had instead of replacing \(kept.count == 1 ? "it" : "them")."
+                    message = [message, note].compactMap { $0 }.joined(separator: " ")
                 }
-            } catch {
-                message = error.localizedDescription
+            } else {
+                finished(try await ModInstaller.installLocal(file: file, gameExecutable: program.url))
             }
+        } catch {
+            message = error.localizedDescription
         }
     }
 
@@ -1150,6 +1344,8 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     let steamWasRunning = await SteamModLauncher.isSteamRunning()
                     let started = Date()
                     if let modFolder {
+                        // Any mod with its own account copy starts signed in, not as a new player.
+                        ModAccountPrimer.seedDiscoveredSaves(bottleURL: program.bottle.url)
                         SteamModLauncher.ensureLoaderOverride(gameExecutable: program.url, bottle: program.bottle)
                         try await SteamModLauncher.prepare(appId: appId, bottle: program.bottle)
                         try SteamModLauncher.select(
@@ -1205,7 +1401,11 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                 bottleURL: program.bottle.url, appId: appId,
                 gameFolder: modFolder ?? gameFolder, modded: modFolder != nil, startedAt: started
             ),
-            steamWasRunning: steamWasRunning
+            steamWasRunning: steamWasRunning,
+            firstStart: modFolder.map { folder in
+                let interop = folder.appending(path: "BepInEx/interop").path(percentEncoded: false)
+                return ((try? FileManager.default.contentsOfDirectory(atPath: interop)) ?? []).isEmpty
+            } ?? false
         )
     }
 
@@ -1372,4 +1572,39 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
         Task { await refresh() }
     }
+}
+
+/// A profile's picture: its initials on a colour picked from its name, so
+/// each profile keeps the same look.
+private struct ProfileAvatar: View {
+    let name: String
+    let size: CGFloat
+
+    private static let colors: [Color] = [.red, .orange, .yellow, .green, .mint, .teal, .blue, .indigo, .purple, .pink]
+
+    private var color: Color {
+        let sum = name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        return Self.colors[abs(sum) % Self.colors.count]
+    }
+
+    private var initials: String {
+        let words = name.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == ":" })
+        return String(words.prefix(2).compactMap(\.first)).uppercased()
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: size / 4, style: .continuous)
+            .fill(color.gradient)
+            .frame(width: size, height: size)
+            .overlay {
+                Text(initials.isEmpty ? "?" : initials)
+                    .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
