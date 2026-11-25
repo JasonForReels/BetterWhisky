@@ -45,6 +45,14 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     @State private var addTarget: Profile?
     /// The profile shown below the profile picker.
     @State private var selectedProfileID: URL?
+    /// Mods waiting to go into a profile, one after another.
+    @State private var addQueue: [QueuedAdd] = []
+    @State private var queueRunning = false
+    @State private var queueNotes: [String] = []
+    /// The profile the Add Several Mods sheet adds to.
+    @State private var multiAddProfile: Profile?
+    /// Presets ticked in the New Profile sheet, by repo.
+    @State private var newProfilePresets: Set<String> = []
     /// Bumped to re-read companion apps after an install or a switch.
     @State private var companionsChanged = 0
     @Binding var modsChanged: Int
@@ -57,6 +65,18 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         let folder: URL
         let name: String
         let mods: [InstalledMod]
+    }
+
+    /// One mod waiting to go into a profile: a preset, or a file or folder
+    /// (held open while it waits when it came from a file picker).
+    enum AddJob {
+        case preset(ModPreset)
+        case file(URL, scoped: Bool)
+    }
+
+    struct QueuedAdd {
+        let job: AddJob
+        let profile: Profile
     }
 
     /// Naming a profile: a new empty one, a copy of one, or a rename.
@@ -127,6 +147,16 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
         .sheet(item: $nameRequest) { request in
             nameSheet(request)
+        }
+        .sheet(item: $multiAddProfile) { profile in
+            AddSeveralModsSheet(
+                profileName: profile.name, presets: addablePresets(for: profile)
+            ) { picked, files in
+                multiAddProfile = nil
+                enqueue(picked.map { .preset($0) } + files.map { .file($0, scoped: true) }, into: profile)
+            } onCancel: {
+                multiAddProfile = nil
+            }
         }
         .sheet(item: $pendingCheck, onDismiss: discardPendingCheck) { pending in
             compatibilitySheet(pending)
@@ -336,11 +366,13 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     Button(preset.name) { addPreset(preset, to: profile) }
                 }
                 if !addablePresets(for: profile).isEmpty { Divider() }
+                Button("Add Several Mods…", systemImage: "square.stack.3d.up") { multiAddProfile = profile }
+                Divider()
                 Button("From GitHub…", systemImage: "link") {
                     addTarget = profile
                     showAddSheet = true
                 }
-                Button("From a File or Folder…", systemImage: "doc.badge.plus") {
+                Button("From Files or Folders…", systemImage: "doc.badge.plus") {
                     addTarget = profile
                     showFilePicker = true
                 }
@@ -357,14 +389,13 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [.zip, .folder, UTType(filenameExtension: "dll") ?? .data],
-            allowsMultipleSelection: false
+            allowsMultipleSelection: true
         ) { result in
             switch result {
             case .success(let urls):
-                Task { @MainActor in
-                    for url in urls { await installPicked(url) }
-                    if pendingCheck == nil { addTarget = nil }
-                }
+                let target = addTarget ?? profile
+                for url in urls { _ = url.startAccessingSecurityScopedResource() }
+                enqueue(urls.map { .file($0, scoped: true) }, into: target)
             case .failure(let error):
                 addTarget = nil
                 message = error.localizedDescription
@@ -515,6 +546,24 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             ))
             .textFieldStyle(.roundedBorder)
             .onSubmit { applyName(nameRequest ?? request) }
+            if request.kind == .create, !presets.filter(\.install.frozenCopy).isEmpty {
+                Text("Start with these mods (you can add more later):")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                ForEach(presets.filter(\.install.frozenCopy)) { preset in
+                    Toggle(preset.name, isOn: Binding(
+                        get: { newProfilePresets.contains(preset.repo) },
+                        set: { isOn in
+                            if isOn {
+                                newProfilePresets.insert(preset.repo)
+                            } else {
+                                newProfilePresets.remove(preset.repo)
+                            }
+                        }
+                    ))
+                    .toggleStyle(.checkbox)
+                }
+            }
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { nameRequest = nil }
@@ -549,6 +598,12 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     let copy = try await Task.detached { try ModProfiles.create(request.name, game: game) }.value
                     selectedProfileID = copy
                     message = "Made \(request.name). Add mods to it with Add Mod."
+                    let picked = presets.filter { newProfilePresets.contains($0.repo) }
+                    newProfilePresets = []
+                    if !picked.isEmpty {
+                        enqueue(picked.map { .preset($0) },
+                                into: Profile(folder: copy, name: request.name, mods: []))
+                    }
                 case .duplicate:
                     guard let copy = request.profile?.folder else { return }
                     let made = try await Task.detached { try ModProfiles.duplicate(copy, as: request.name) }.value
@@ -942,35 +997,78 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     /// Fetches a preset's latest release into a profile that already has a
     /// mod, checking it against that mod (and any others) before anything is written.
     private func addPreset(_ preset: ModPreset, to profile: Profile) {
-        Task {
-            busy = "Checking \(preset.name) against \(profile.name)…"
-            defer { busy = nil }
-            do {
-                async let readme = GitHubReleases.readme(repo: preset.repo)
-                let release = try await GitHubReleases.latestRelease(repo: preset.repo)
-                let readmeText = try? await readme
-                let plan = ModReadmePlanner.plan(readme: readmeText, release: release, repo: preset.repo)
-                guard let asset = release.assets.first(where: { preset.matchesAsset(named: $0.name) })
-                    ?? plan?.asset else {
-                    message = "\(preset.name) \(release.tagName) has no file to install."
-                    return
-                }
-                // Into this profile's copy as it is: no copy of its own.
-                var rule = preset.install
-                rule.frozenCopy = false
-                rule.ownFolder = false
-                rule.copyGame = false
-                let text = [release.body, readmeText].compactMap { $0 }.joined(separator: "\n")
-                let staged = try await ModInstaller.stage(asset: asset, rule: rule, into: profile.folder)
-                await checkThenInstall(
-                    staged, name: preset.name, repo: preset.repo, version: release.tagName, rule: rule,
-                    host: (profile.name, profile.folder),
-                    required: ModGameVersion.required(in: text, modVersion: release.tagName),
-                    dependencies: plan?.dependencies ?? ModDependencies()
-                )
-            } catch {
-                message = error.localizedDescription
+        enqueue([.preset(preset)], into: profile)
+    }
+
+    /// Adds mods to a profile one after another. A mod whose check needs an
+    /// answer pauses the queue until the sheet is answered.
+    private func enqueue(_ jobs: [AddJob], into profile: Profile) {
+        addQueue += jobs.map { QueuedAdd(job: $0, profile: profile) }
+        Task { await runQueue() }
+    }
+
+    private func runQueue() async {
+        guard !queueRunning else { return }
+        queueRunning = true
+        defer { queueRunning = false }
+        while pendingCheck == nil, !addQueue.isEmpty {
+            let next = addQueue.removeFirst()
+            addTarget = next.profile
+            message = nil
+            switch next.job {
+            case .preset(let preset):
+                await addPresetNow(preset, to: next.profile)
+            case let .file(url, scoped):
+                await installLocalFile(url)
+                if scoped { url.stopAccessingSecurityScopedResource() }
             }
+            if pendingCheck == nil, let message { queueNotes.append(message) }
+        }
+        guard pendingCheck == nil else { return }
+        addTarget = nil
+        if queueNotes.count > 1 { message = queueNotes.joined(separator: " ") }
+        queueNotes = []
+    }
+
+    /// Resumes the queue once a paused check is answered.
+    private func resumeQueue() {
+        if let message, !addQueue.isEmpty || !queueNotes.isEmpty { queueNotes.append(message) }
+        if addQueue.isEmpty {
+            if queueNotes.count > 1 { message = queueNotes.joined(separator: " ") }
+            queueNotes = []
+        } else {
+            Task { await runQueue() }
+        }
+    }
+
+    private func addPresetNow(_ preset: ModPreset, to profile: Profile) async {
+        busy = "Checking \(preset.name) against \(profile.name)…"
+        defer { busy = nil }
+        do {
+            async let readme = GitHubReleases.readme(repo: preset.repo)
+            let release = try await GitHubReleases.latestRelease(repo: preset.repo)
+            let readmeText = try? await readme
+            let plan = ModReadmePlanner.plan(readme: readmeText, release: release, repo: preset.repo)
+            guard let asset = release.assets.first(where: { preset.matchesAsset(named: $0.name) })
+                ?? plan?.asset else {
+                message = "\(preset.name) \(release.tagName) has no file to install."
+                return
+            }
+            // Into this profile's copy as it is: no copy of its own.
+            var rule = preset.install
+            rule.frozenCopy = false
+            rule.ownFolder = false
+            rule.copyGame = false
+            let text = [release.body, readmeText].compactMap { $0 }.joined(separator: "\n")
+            let staged = try await ModInstaller.stage(asset: asset, rule: rule, into: profile.folder)
+            await checkThenInstall(
+                staged, name: preset.name, repo: preset.repo, version: release.tagName, rule: rule,
+                host: (profile.name, profile.folder),
+                required: ModGameVersion.required(in: text, modVersion: release.tagName),
+                dependencies: plan?.dependencies ?? ModDependencies()
+            )
+        } catch {
+            message = error.localizedDescription
         }
     }
 
@@ -1017,6 +1115,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             message = error.localizedDescription
         }
         await refresh()
+        if !queueRunning { resumeQueue() }
     }
 
     private func discardPendingCheck() {
@@ -1025,6 +1124,8 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
             ModInstaller.discard(pending.staged)
             pendingCheck = nil
             addTarget = nil
+            message = "Skipped \(pending.name)."
+            resumeQueue()
         }
     }
 
@@ -1655,6 +1756,88 @@ private struct ProfileAvatar: View {
         .frame(width: size, height: size)
         .overlay { shape.strokeBorder(.white.opacity(0.12), lineWidth: 1) }
         .accessibilityHidden(true)
+    }
+}
+
+/// Ticks several mods at once for a profile: known mods, plus any files or
+/// folders, added one after another when the person presses Add.
+private struct AddSeveralModsSheet: View {
+    let profileName: String
+    let presets: [ModPreset]
+    let onAdd: ([ModPreset], [URL]) -> Void
+    let onCancel: () -> Void
+
+    @State private var picked: Set<String> = []
+    @State private var files: [URL] = []
+    @State private var choosingFiles = false
+
+    private var count: Int { picked.count + files.count }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Add mods to \(profileName)").font(.headline)
+            Text("Tick as many as you like. They're added one after another and all load together.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            if !presets.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(presets) { preset in
+                        Toggle(isOn: Binding(
+                            get: { picked.contains(preset.repo) },
+                            set: { isOn in
+                                if isOn { picked.insert(preset.repo) } else { picked.remove(preset.repo) }
+                            }
+                        )) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(preset.name)
+                                Text(verbatim: preset.repo).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .toggleStyle(.checkbox)
+                    }
+                }
+            }
+            Divider()
+            ForEach(files, id: \.self) { file in
+                HStack {
+                    Image(systemName: file.hasDirectoryPath ? "folder" : "doc")
+                    Text(file.lastPathComponent).lineLimit(1)
+                    Spacer()
+                    Button("Remove", systemImage: "xmark.circle.fill") {
+                        file.stopAccessingSecurityScopedResource()
+                        files.removeAll { $0 == file }
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                }
+            }
+            Button("Choose Files or Folders…", systemImage: "doc.badge.plus") { choosingFiles = true }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) {
+                    files.forEach { $0.stopAccessingSecurityScopedResource() }
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+                Button(count == 0 ? "Add" : "Add \(count) Mod\(count == 1 ? "" : "s")") {
+                    onAdd(presets.filter { picked.contains($0.repo) }, files)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(count == 0)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
+        .fileImporter(
+            isPresented: $choosingFiles,
+            allowedContentTypes: [.zip, .folder, UTType(filenameExtension: "dll") ?? .data],
+            allowsMultipleSelection: true
+        ) { result in
+            guard case .success(let urls) = result else { return }
+            for url in urls where !files.contains(url) && url.startAccessingSecurityScopedResource() {
+                files.append(url)
+            }
+        }
     }
 }
 
