@@ -9,6 +9,18 @@ const statement =
 
 const tour = [
   {
+    img: '/images/app-store.png',
+    title: 'The Steam Store, built in.',
+    body: 'Browse what\'s new and trending, search the whole store, and buy games without the Wine Steam window.',
+    alt: 'The Store tab: a featured game, a Steam Store search field and Trending games',
+  },
+  {
+    img: '/images/app-steam-library.png',
+    title: 'Your whole Steam Library.',
+    body: 'Every game on your account, installed or not, with its art. Filter, sort by recently played, and install with one click.',
+    alt: 'The Steam Library tab with All, Installed and Not Installed filters',
+  },
+  {
     img: '/images/app-search.png',
     title: 'Search everything at once.',
     body: 'One field finds games, mods and the bottles they live in.',
