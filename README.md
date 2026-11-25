@@ -2,9 +2,10 @@
 
   # BetterWhisky
 
-  **Whisky, with one-click mods.** Install a mod from GitHub, press Play, and BetterWhisky
-  handles the rest: the right download, the install steps, the game version the mod needs,
-  and starting it through Steam so you stay signed in.
+  **Windows games, at home on your Mac.** Your Steam Library, the Steam Store and your other
+  Windows games in one app, with bottles that set themselves up, DirectX on Metal, working
+  launchers and a built-in troubleshooter. And when you want mods: profiles with any mix of
+  them, installed in one click and started through Steam so you stay signed in.
 
   A fork of [frankea/Whisky](https://github.com/frankea/Whisky), the community continuation of
   [Whisky](https://github.com/whisky-app/whisky). Not affiliated with either project.

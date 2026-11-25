@@ -5,7 +5,7 @@ const VERSION = '1.4.0'
 const DMG = `${REPO}/releases/download/v${VERSION}/BetterWhisky-${VERSION}.dmg`
 
 const statement =
-  'Make a profile. Add any mods to it. Press Play. BetterWhisky finds the right release, reads the install steps, keeps the game version the mod needs, and starts it through Steam so you stay signed in.'
+  'Your Steam Library, the Steam Store and your other Windows games, in one Mac app. Bottles that set themselves up, graphics that work, a troubleshooter for when they don\'t, and mods in one click when you want them.'
 
 const tour = [
   {
@@ -49,13 +49,13 @@ const tour = [
 const showcase = [
   {
     eyebrow: 'Library',
-    title: 'Every profile gets its own card.',
-    body: 'The regular game and each mod profile sit side by side, with the mod\'s own logo. Each profile is an instant APFS clone of the game, so it takes no extra space until Steam changes the original.',
+    title: 'Every game in one place.',
+    body: 'Steam games, programs you installed yourself and your mod profiles, each with its own card and art. The game you played last waits at the top, one click from Play.',
     img: '/images/library.png',
     alt: 'Recently Played: LevelImposter, StellarRoles, Town of Us: Mira and BetterCrewLink',
   },
   {
-    eyebrow: 'Profiles',
+    eyebrow: 'Mods, when you want them',
     title: 'Profiles, like a streaming service.',
     body: 'Each profile is its own copy of the game with any mix of mods: StellarRoles with LevelImposter, Town of Us: Mira on its own, or all three. Add mods from GitHub, a .zip, a .dll or a folder, and switch each one on or off.',
     img: '/images/mod-settings.png',
@@ -71,6 +71,11 @@ const showcase = [
 ]
 
 const features = [
+  ['A Wine engine built for games', 'Wine 11 built from CrossOver\'s sources, set up on first launch. Each bottle is its own Windows, with the version and settings a game needs.'],
+  ['DirectX on Metal', 'DXMT, DXVK and Apple\'s Game Porting Toolkit (D3DMetal), so Direct3D games draw on your Mac\'s GPU.'],
+  ['Launchers that work', 'Steam, Epic, the EA app, Rockstar Games Launcher and Battle.net, each with the fixes it needs to sign in and start games.'],
+  ['A troubleshooter built in', 'When a game won\'t start, a guided troubleshooter walks through the likely causes and reads the game\'s crash log for you.'],
+  ['Controllers and input', 'Controller options per bottle, so gamepads work the way the game expects.'],
   ['Mods from anywhere, several at once', 'Built-in mods, any GitHub repo, .zips, .dlls or whole folders: tick several and add them in one go. A new mod never replaces files another mod put there.'],
   ['Pick a profile from the Library', 'The profile button beside Play, or Play With on any game, starts whichever profile you want.'],
   ['A Steam Store inside the app', 'Browse the Steam Store and buy games without opening the Wine Steam window.'],
@@ -103,7 +108,7 @@ export default function App() {
         <div className="sticky">
           <div className="hero-copy">
             <p className="eyebrow">BetterWhisky for Mac</p>
-            <h1>Whisky,<br />with one-click mods.</h1>
+            <h1>Windows games,<br />at home on your Mac.</h1>
             <div className="ctas">
               <a className="btn" href={DMG}>Download for Mac</a>
               <a className="link" href="#showcase">See how it works ›</a>
@@ -166,7 +171,7 @@ export default function App() {
 
       {/* 4. Speed: big numbers */}
       <section id="speed" className="speed">
-        <p className="eyebrow" data-reveal>Faster modded starts</p>
+        <p className="eyebrow" data-reveal>Faster starts</p>
         <h2 className="huge" data-reveal>From 3½ minutes<br />to under 2.</h2>
         <div className="bars" data-reveal>
           <div className="bar before"><span>Before</span><b>~3.5 min</b></div>
@@ -191,7 +196,7 @@ export default function App() {
 
       {/* 6. Feature grid */}
       <section className="features">
-        <h2 className="huge" data-reveal>Everything else,<br />handled.</h2>
+        <h2 className="huge" data-reveal>Games first.<br />Everything handled.</h2>
         <div className="grid">
           {features.map(([t, b], i) => (
             <article className="card" key={t} data-reveal style={{ '--d': `${(i % 2) * 120}ms` }}>
