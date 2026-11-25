@@ -278,11 +278,13 @@ public enum ModCompatibility {
             let notes = clashes.filter(isReadingFile)
             let files = clashes.filter { !isReadingFile($0) }
             if !notes.isEmpty {
+                let theirs = possessive(owner.name)
                 report.add(.info, "Both include \(list(notes)), a text file for reading that the game doesn't use. "
-                    + "\(possessive(name)) copy is shown, and \(possessive(owner.name)) comes back if you remove \(name).")
+                    + "\(possessive(name)) copy is shown, and \(theirs) comes back if you remove \(name).")
             }
             if !files.isEmpty {
-                report.add(.warning, "Replaces \(possessive(owner.name)) \(list(files)). BetterWhisky keeps \(possessive(owner.name)) "
+                let theirs = possessive(owner.name)
+                report.add(.warning, "Replaces \(theirs) \(list(files)). BetterWhisky keeps \(theirs) "
                     + "copy and puts it back if you remove \(name).")
             }
         }
