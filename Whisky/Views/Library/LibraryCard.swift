@@ -380,7 +380,8 @@ extension LibraryCard {
     /// letters alone, tinted like Steam's so it reads in light and dark.
     static let bundledModLogos: [String: (name: String, template: Bool)] = [
         "LevelImposter": ("ModLogo-LevelImposter", true),
-        "BetterCrewLink": ("ModLogo-BetterCrewLink", false)
+        "BetterCrewLink": ("ModLogo-BetterCrewLink", false),
+        "StellarRoles": ("ModLogo-StellarRoles", false)
     ]
 
     static func bundledLogo(forMod name: String) -> AnyView? {

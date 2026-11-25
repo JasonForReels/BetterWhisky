@@ -162,7 +162,9 @@ struct LibraryView: View {
                         play: { model.launch(hero, bottles: bottles) },
                         stop: { model.stop(hero, bottles: bottles) },
                         mods: settingsAction(for: hero),
-                        about: aboutAction(for: hero)
+                        about: aboutAction(for: hero),
+                        variants: variants(of: hero),
+                        playVariant: { model.launch($0, bottles: bottles) }
                     )
                     .contextMenu { menu(for: hero) }
                     .id("hero-\(hero.id)")
@@ -217,9 +219,29 @@ struct LibraryView: View {
         return { withAnimation(.smooth(duration: 0.4)) { aboutAppID = appID } }
     }
 
+    /// Every way to play the same game: the plain game first, then each mod profile.
+    private func variants(of row: LibraryRow) -> [LibraryRow] {
+        guard let game = row.item.mod?.gameFolder else { return [] }
+        let all = model.rows.filter { $0.item.mod?.gameFolder == game }
+        guard all.count > 1 else { return [] }
+        return all.sorted { lhs, rhs in
+            let lhsPlain = lhs.item.mod?.modFolder == nil, rhsPlain = rhs.item.mod?.modFolder == nil
+            if lhsPlain != rhsPlain { return lhsPlain }
+            return lhs.item.name.localizedStandardCompare(rhs.item.name) == .orderedAscending
+        }
+    }
+
     @ViewBuilder
     private func menu(for row: LibraryRow) -> some View {
         Button("button.run") { model.launch(row, bottles: bottles) }
+        let others = variants(of: row).filter { $0.id != row.id }
+        if !others.isEmpty {
+            Menu("Play With") {
+                ForEach(others) { variant in
+                    Button(LibraryHero.profileName(variant)) { model.launch(variant, bottles: bottles) }
+                }
+            }
+        }
         if model.state(for: row.item) == .running {
             Button("library.card.stop") { model.stop(row, bottles: bottles) }
         }

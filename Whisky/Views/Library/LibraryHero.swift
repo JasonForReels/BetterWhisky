@@ -30,6 +30,9 @@ struct LibraryHero: View {
     var stop: (() -> Void)?
     var mods: (() -> Void)?
     var about: (() -> Void)?
+    /// Every way to play this game: the plain game and each mod profile.
+    var variants: [LibraryRow] = []
+    var playVariant: ((LibraryRow) -> Void)?
 
     @State private var art: StoreArtwork?
     @State private var localArt: NSImage?
@@ -199,6 +202,9 @@ struct LibraryHero: View {
                     .cardGlass(.capsule)
                     .transition(.opacity.combined(with: .scale))
             }
+            if variants.count > 1, let playVariant {
+                profileMenu(playVariant)
+            }
             if let mods {
                 roundButton("puzzlepiece.extension", help: "Mods", action: mods)
             }
@@ -206,6 +212,49 @@ struct LibraryHero: View {
                 roundButton("info", help: "About This Game", action: about)
             }
         }
+    }
+
+    /// The profile part of a modded card's name: "Among Us · Sellar" → "Sellar".
+    static func profileName(_ row: LibraryRow) -> String {
+        guard row.item.mod?.modFolder != nil else { return "No Mods" }
+        return row.item.name.components(separatedBy: " · ").last ?? row.item.name
+    }
+
+    /// Picks which profile to play, without opening the Mods sheet.
+    private func profileMenu(_ playVariant: @escaping (LibraryRow) -> Void) -> some View {
+        Menu {
+            Section("Play With") {
+                ForEach(variants) { variant in
+                    Button {
+                        playVariant(variant)
+                    } label: {
+                        Label(Self.profileName(variant), systemImage: variant.id == row.id ? "checkmark"
+                            : variant.item.mod?.modFolder == nil ? "gamecontroller" : "person.crop.square")
+                    }
+                }
+            }
+            if let mods {
+                Divider()
+                Button("Manage Profiles…", systemImage: "slider.horizontal.3", action: mods)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "person.crop.square.fill")
+                Text(Self.profileName(row)).lineLimit(1)
+                Image(systemName: "chevron.down").font(.caption.weight(.bold))
+            }
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .cardGlass(.capsule, interactive: true)
+            .colorScheme(.dark)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Play with a different mod profile")
+        .accessibilityLabel("Profile: \(Self.profileName(row)). Choose a profile to play")
     }
 
     private func roundButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
