@@ -18,6 +18,7 @@
 
 import AppKit
 import Sparkle
+@preconcurrency import UserNotifications
 
 /// Adds gentle scheduled-update reminders on top of Sparkle's standard user
 /// driver (whisky-app/whisky#765, lighter-touch variant).
@@ -42,6 +43,13 @@ final class SparkleUpdaterDelegate: NSObject, ObservableObject, SPUStandardUserD
     /// True when a scheduled check found an update whose modal alert we deferred.
     /// Drives the in-app "Install Update…" affordance.
     @Published var updateAvailable = false
+
+    /// The updater the notification's Install button hands back to. Set once at launch.
+    weak var updater: SPUUpdater?
+
+    private static let notificationID = "BetterWhisky.updateAvailable"
+    private static let categoryID = "BetterWhisky.update"
+    private static let installActionID = "BetterWhisky.update.install"
 
     /// Opt into handling our own gentle reminders for scheduled updates.
     var supportsGentleScheduledUpdateReminders: Bool {
@@ -71,7 +79,10 @@ final class SparkleUpdaterDelegate: NSObject, ObservableObject, SPUStandardUserD
         // When Sparkle isn't showing the alert itself (we deferred), raise the
         // gentle indicator instead of stealing focus with a modal.
         guard !handleShowingUpdate else { return }
-        MainActor.assumeIsolated { self.setUpdateAvailable(true) }
+        MainActor.assumeIsolated {
+            self.setUpdateAvailable(true)
+            self.postUpdateNotification(version: update.displayVersionString)
+        }
     }
 
     func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
@@ -82,9 +93,80 @@ final class SparkleUpdaterDelegate: NSObject, ObservableObject, SPUStandardUserD
         MainActor.assumeIsolated { self.setUpdateAvailable(false) }
     }
 
+    #if DEBUG
+    /// Debug builds only: launch with `-TestUpdateNotification YES` to raise the
+    /// update badge and notification as if a scheduled check had found a version.
+    @MainActor
+    func simulateUpdateIfRequested() {
+        guard UserDefaults.standard.bool(forKey: "TestUpdateNotification") else { return }
+        setUpdateAvailable(true)
+        postUpdateNotification(version: "9.9.9")
+    }
+    #endif
+
     @MainActor
     private func setUpdateAvailable(_ value: Bool) {
         updateAvailable = value
         NSApp.dockTile.badgeLabel = value ? "1" : ""
+        if !value {
+            UNUserNotificationCenter.current()
+                .removeDeliveredNotifications(withIdentifiers: [Self.notificationID])
+        }
+    }
+
+    /// Posts a system notification, like macOS Software Update does: a banner in
+    /// Notification Centre with an Install button, which never steals focus.
+    /// macOS asks the user once whether BetterWhisky may send notifications; if
+    /// they say no, the Dock badge and the menu item are still there.
+    @MainActor
+    private func postUpdateNotification(version: String) {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        let install = UNNotificationAction(
+            identifier: Self.installActionID,
+            title: String(localized: "update.notification.install"),
+            options: [.foreground]
+        )
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: Self.categoryID, actions: [install], intentIdentifiers: [])
+        ])
+
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "update.notification.title")
+        content.body = String(format: String(localized: "update.notification.body"), version)
+        content.categoryIdentifier = Self.categoryID
+
+        let request = UNNotificationRequest(identifier: Self.notificationID, content: content, trigger: nil)
+        center.requestAuthorization(options: [.alert]) { granted, _ in
+            guard granted else { return }
+            center.add(request)
+        }
+    }
+}
+
+extension SparkleUpdaterDelegate: UNUserNotificationCenterDelegate {
+    /// Clicking the banner or its Install button opens Sparkle's update window.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.identifier == Self.notificationID,
+           response.actionIdentifier != UNNotificationDismissActionIdentifier {
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                self.updater?.checkForUpdates()
+            }
+        }
+        completionHandler()
+    }
+
+    /// Shows the banner even while BetterWhisky is the front app.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list])
     }
 }

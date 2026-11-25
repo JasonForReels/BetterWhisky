@@ -96250,6 +96250,36 @@
         }
       }
     },
+    "update.notification.body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BetterWhisky %@ is ready to install."
+          }
+        }
+      }
+    },
+    "update.notification.install" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install"
+          }
+        }
+      }
+    },
+    "update.notification.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update Available"
+          }
+        }
+      }
+    },
     "update.whiskywine.description" : {
       "localizations" : {
         "ar" : {

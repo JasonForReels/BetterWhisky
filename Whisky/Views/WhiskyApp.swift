@@ -67,6 +67,12 @@ struct WhiskyApp: App {
             updaterDelegate: nil,
             userDriverDelegate: SparkleUpdaterDelegate.shared
         )
+        SparkleUpdaterDelegate.shared.updater = updaterController.updater
+        #if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            SparkleUpdaterDelegate.shared.simulateUpdateIfRequested()
+        }
+        #endif
         Telemetry.startIfConsented()
     }
 

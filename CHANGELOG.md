@@ -6,6 +6,14 @@ What changed in each BetterWhisky release. Downloads are on the
 BetterWhisky is a fork of [frankea/Whisky](https://github.com/frankea/Whisky). Changes from
 before the fork, up to Whisky 3.10.2, are in [docs/WHISKY-CHANGELOG.md](docs/WHISKY-CHANGELOG.md).
 
+## [1.4.1] - 2026-11-25
+
+### Added
+- **Update notifications.** When a new version is out while you're busy, BetterWhisky shows a
+  macOS notification, like Software Update does, with an **Install** button. It never
+  interrupts what you're doing. The red badge on the Dock icon and **Install Update…** in the
+  menu are still there.
+
 ## [1.4.0] - 2026-11-25
 
 ### Added
@@ -98,6 +106,7 @@ The first BetterWhisky release.
 ### Fixed
 - The command line tool looked for bottles in the old Whisky container.
 
+[1.4.1]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.1
 [1.4.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.0
 [1.3.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.3.0
 [1.2.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.2.0
