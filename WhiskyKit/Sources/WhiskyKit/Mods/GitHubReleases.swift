@@ -75,6 +75,18 @@ public enum GitHubReleases {
         return try decoder.decode(GitHubRelease.self, from: data)
     }
 
+    /// The repository's recent releases, newest first, prereleases included.
+    public static func releases(
+        repo: String, limit: Int = 30, session: URLSession = .shared
+    ) async throws -> [GitHubRelease] {
+        var url = api.appending(path: "repos/\(repo)/releases")
+        url.append(queryItems: [URLQueryItem(name: "per_page", value: String(limit))])
+        let data = try await get(url, repo: repo, session: session)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([GitHubRelease].self, from: data)
+    }
+
     /// The repository's README as plain text, or `nil` when it has none.
     public static func readme(repo: String, session: URLSession = .shared) async throws -> String? {
         do {

@@ -104,7 +104,8 @@ public enum ModInstaller {
     public static func uninstall(_ mod: InstalledMod, from gameFolder: URL) throws {
         let fileManager = FileManager.default
         let backup = gameFolder.appending(path: backupFolder).appending(path: safeName(mod.repo))
-        for relative in mod.files {
+        // Config files are the player's settings, kept for a reinstall or update.
+        for relative in mod.files where !relative.lowercased().hasPrefix("bepinex/config/") {
             let target = try resolve(relative, in: gameFolder)
             try? fileManager.removeItem(at: target)
             try? fileManager.removeItem(at: try resolve("\(disabledFolder)/\(relative)", in: gameFolder))
@@ -251,6 +252,11 @@ public enum ModInstaller {
             guard destination.path.hasPrefix(gameRoot + "/") else { throw ModInstallError.unsafePath(relativeToSource) }
             let relativeToGame = String(destination.path.dropFirst(gameRoot.count + 1))
 
+            // A config file already in the profile holds the player's settings: keep it.
+            if relativeToGame.lowercased().hasPrefix("bepinex/config/"),
+               fileManager.fileExists(atPath: destination.path) {
+                continue
+            }
             try makeParent(of: destination)
             if fileManager.fileExists(atPath: destination.path) {
                 let saved = backup.appending(path: relativeToGame)

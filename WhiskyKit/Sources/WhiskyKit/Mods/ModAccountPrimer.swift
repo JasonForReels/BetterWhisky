@@ -118,16 +118,61 @@ public enum ModAccountPrimer {
     }
 
     /// Copies the plain save to the mod's names, unless the mod already has
-    /// a signed-in save of its own. A signed-out one, left by a failed first
-    /// run, is replaced.
+    /// a signed-in save of its own. A signed-out account, left by a failed
+    /// first run, is replaced; the mod's other files (its settings) are only
+    /// filled in when missing, so the player's settings are never reset.
     static func seedModSave(_ save: ModAccountSave, in folder: URL) throws {
         guard let account = save.files.first else { return }
         guard !isSignedIn(folder.appending(path: account + save.suffix)) else { return }
         for file in save.files {
             let target = folder.appending(path: file + save.suffix)
+            let exists = FileManager.default.fileExists(atPath: target.path(percentEncoded: false))
+            if exists, file != account { continue }
             try? FileManager.default.removeItem(at: target)
             try FileManager.default.copyItem(at: folder.appending(path: file), to: target)
         }
+    }
+
+    // MARK: Settings per profile
+
+    static let settingsOwnerFile = ".betterwhisky-settings-owner"
+    static let profileSettingsFolder = ".betterwhisky-settings"
+
+    /// Gives each profile its own game settings. Profiles of one mod share
+    /// one settings file in the game's save folder, so before a profile
+    /// starts, the live settings go back to the profile that last played and
+    /// this profile's own settings (if it has any yet) come in.
+    /// The account file is never touched.
+    public static func switchSettings(
+        to profileGame: URL, bottleURL: URL, save: ModAccountSave = .amongUs(suffix: "")
+    ) {
+        guard let folder = saveFolder(save, bottleURL: bottleURL) else { return }
+        let fileManager = FileManager.default
+        let settingsNames = save.files.dropFirst()
+        let live = ((try? fileManager.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? [])
+            .filter { name in settingsNames.contains { name.hasPrefix($0 + "_") } }
+        let owner = folder.appending(path: settingsOwnerFile)
+        let target = profileGame.deletingLastPathComponent().standardizedFileURL
+        let previous = (try? String(contentsOf: owner, encoding: .utf8)).map { URL(fileURLWithPath: $0) }
+        if previous?.standardizedFileURL.path == target.path { return }
+
+        // Keep what the last profile played with.
+        if let previous, fileManager.fileExists(atPath: previous.path(percentEncoded: false)) {
+            let store = previous.appending(path: profileSettingsFolder)
+            try? fileManager.createDirectory(at: store, withIntermediateDirectories: true)
+            for name in live {
+                try? fileManager.removeItem(at: store.appending(path: name))
+                try? fileManager.copyItem(at: folder.appending(path: name), to: store.appending(path: name))
+            }
+        }
+        // Bring in this profile's, when it has its own already.
+        let store = target.appending(path: profileSettingsFolder)
+        let kept = (try? fileManager.contentsOfDirectory(atPath: store.path(percentEncoded: false))) ?? []
+        for name in kept where settingsNames.contains(where: { name.hasPrefix($0 + "_") }) {
+            try? fileManager.removeItem(at: folder.appending(path: name))
+            try? fileManager.copyItem(at: store.appending(path: name), to: folder.appending(path: name))
+        }
+        try? target.path.write(to: owner, atomically: true, encoding: .utf8)
     }
 
     /// Makes sure the mod named `modName` has a signed-in save before it

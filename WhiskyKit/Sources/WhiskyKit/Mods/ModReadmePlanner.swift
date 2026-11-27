@@ -96,7 +96,10 @@ public struct ModDependencies: Sendable, Hashable {
 public enum ModReadmePlanner {
     /// Reads the latest release's notes first, then the README, so steps that
     /// changed with a release win over older README text.
-    public static func plan(readme: String?, release: GitHubRelease, repo: String? = nil) -> ModInstallPlan? {
+    /// Pass `asset` to plan for a file the user picked instead of the best guess.
+    public static func plan(
+        readme: String?, release: GitHubRelease, repo: String? = nil, asset chosen: GitHubRelease.Asset? = nil
+    ) -> ModInstallPlan? {
         let text = [release.body, readme].compactMap { $0 }.joined(separator: "\n")
         let sentences = text
             .components(separatedBy: CharacterSet(charactersIn: "\n.!"))
@@ -117,7 +120,7 @@ public enum ModReadmePlanner {
             return line.contains("game") || line.contains("among us") || line.contains("install")
         } ?? false
 
-        guard let asset = pickAsset(release.assets, preferDLL: pluginLine != nil && extractLine == nil) else {
+        guard let asset = chosen ?? pickAsset(release.assets, preferDLL: pluginLine != nil && extractLine == nil) else {
             return nil
         }
         let isZip = asset.name.lowercased().hasSuffix(".zip")
@@ -147,6 +150,11 @@ public enum ModReadmePlanner {
         return ModInstallPlan(
             asset: asset, rule: rule, reasons: reasons, confident: confident, dependencies: dependencies
         )
+    }
+
+    /// The files in a release that can be installed: `.zip` and `.dll`.
+    public static func installableAssets(_ release: GitHubRelease) -> [GitHubRelease.Asset] {
+        release.assets.filter { [".zip", ".dll"].contains(where: $0.name.lowercased().hasSuffix) }
     }
 
     /// The release file most likely meant for a Windows game on Steam.

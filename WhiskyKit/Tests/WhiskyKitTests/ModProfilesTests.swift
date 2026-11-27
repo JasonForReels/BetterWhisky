@@ -57,6 +57,28 @@ import Testing
         #expect(ModInstaller.isEnabled(mod, in: copy))
     }
 
+    @Test func modsOutsideThePluginsFolderStillGetASwitch() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let copy = root.appending(path: "game")
+        let patcher = copy.appending(path: "BepInEx/patchers/Comms.dll")
+        try FileManager.default.createDirectory(
+            at: patcher.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        try Data("dll".utf8).write(to: patcher)
+        try Data("x".utf8).write(to: copy.appending(path: "winhttp.dll"))
+        let mod = InstalledMod(
+            name: "Comms", repo: "a/comms", version: "1", installedAt: Date(),
+            files: ["BepInEx/patchers/Comms.dll", "winhttp.dll"]
+        )
+        #expect(ModInstaller.canToggle(mod))
+        try ModInstaller.setEnabled(false, mod, in: copy)
+        #expect(!exists(patcher))
+        #expect(exists(copy.appending(path: "winhttp.dll")))
+        #expect(!ModInstaller.isEnabled(mod, in: copy))
+        try ModInstaller.setEnabled(true, mod, in: copy)
+        #expect(exists(patcher))
+    }
+
     @Test func removingATurnedOffAddOnLeavesNothingBehind() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let (copy, mod) = try await makeProfile()

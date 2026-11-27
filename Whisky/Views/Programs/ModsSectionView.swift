@@ -105,8 +105,13 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
     struct PendingPlan: Identifiable {
         let id = UUID()
         let repo: String
-        let release: GitHubRelease
-        let plan: ModInstallPlan
+        var release: GitHubRelease
+        var plan: ModInstallPlan
+        /// Every recent release, betas included, to pick from.
+        var releases: [GitHubRelease] = []
+        var readme: String?
+        /// The version already installed, when this changes an installed mod.
+        var installedVersion: String?
     }
 
     private var gameFolder: URL { program.url.deletingLastPathComponent() }
@@ -476,6 +481,13 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     .disabled(busy != nil)
             }
             Menu {
+                if preset == nil, !mod.repo.hasPrefix("local/") {
+                    Button("Change Version…") {
+                        addTarget = profile
+                        planFromGitHub(repo: mod.repo, installedVersion: mod.version)
+                    }
+                    Divider()
+                }
                 // Just this mod: the profile and its other mods stay.
                 Button("Remove from \(profile.name)", role: .destructive) { removeAddOn(mod, from: profile) }
             } label: {
@@ -777,11 +789,15 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         .frame(width: 420)
     }
 
-    private func planSheet(_ pending: PendingPlan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Install \(pending.repo)?").font(.headline)
-            Text("Release \(pending.release.tagName), file \(pending.plan.asset.name)")
-                .foregroundStyle(.secondary)
+    private func planSheet(_ shown: PendingPlan) -> some View {
+        let pending = pendingPlan ?? shown
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(pending.installedVersion == nil ? "Install \(pending.repo)?" : "Change \(pending.repo)'s version?")
+                .font(.headline)
+            if let installed = pending.installedVersion {
+                Text("Installed: \(installed)").font(.callout).foregroundStyle(.secondary)
+            }
+            releasePickers(pending)
             VStack(alignment: .leading, spacing: 4) {
                 Text(describe(pending.plan.rule)).bold()
                 ForEach(pending.plan.reasons, id: \.self) { reason in
@@ -803,7 +819,7 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     pendingPlan = nil
                     addTarget = nil
                 }
-                Button("Install") {
+                Button(pending.installedVersion == nil ? "Install" : "Switch to \(pending.release.tagName)") {
                     pendingPlan = nil
                     install(
                         asset: pending.plan.asset, release: pending.release,
@@ -816,6 +832,65 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
         }
         .padding(20)
         .frame(width: 460)
+    }
+
+    /// Which release (betas included) and which of its files to install.
+    private func releasePickers(_ pending: PendingPlan) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+            GridRow {
+                Text("Release").foregroundStyle(.secondary)
+                Picker("Release", selection: Binding(
+                    get: { pendingPlan?.release.tagName ?? pending.release.tagName },
+                    set: { tag in
+                        guard let release = pending.releases.first(where: { $0.tagName == tag }) else { return }
+                        replan(release: release, asset: nil)
+                    }
+                )) {
+                    let releases = pending.releases.isEmpty ? [pending.release] : pending.releases
+                    ForEach(releases, id: \.tagName) { release in
+                        Text(releaseLabel(release, installed: pending.installedVersion)).tag(release.tagName)
+                    }
+                }
+                .labelsHidden()
+            }
+            GridRow {
+                Text("File").foregroundStyle(.secondary)
+                Picker("File", selection: Binding(
+                    get: { pendingPlan?.plan.asset.name ?? pending.plan.asset.name },
+                    set: { name in
+                        let release = pendingPlan?.release ?? pending.release
+                        guard let asset = release.assets.first(where: { $0.name == name }) else { return }
+                        replan(release: release, asset: asset)
+                    }
+                )) {
+                    ForEach(ModReadmePlanner.installableAssets(pending.release), id: \.name) { asset in
+                        let size = ByteCountFormatter.string(fromByteCount: Int64(asset.size), countStyle: .file)
+                        Text("\(asset.name) (\(size))")
+                            .tag(asset.name)
+                    }
+                }
+                .labelsHidden()
+            }
+        }
+    }
+
+    private func releaseLabel(_ release: GitHubRelease, installed: String?) -> String {
+        var label = release.tagName
+        if release.prerelease { label += " (beta)" }
+        if release.tagName == installed { label += " (installed)" }
+        if let date = release.publishedAt { label += " · " + date.formatted(date: .abbreviated, time: .omitted) }
+        return label
+    }
+
+    /// Rebuilds the plan for another release or file the user picked.
+    private func replan(release: GitHubRelease, asset: GitHubRelease.Asset?) {
+        guard var pending = pendingPlan,
+              let plan = ModReadmePlanner.plan(
+                  readme: pending.readme, release: release, repo: pending.repo, asset: asset
+              ) else { return }
+        pending.release = release
+        pending.plan = plan
+        pendingPlan = pending
     }
 
     private func describe(_ rule: ModInstallRule) -> String {
@@ -1314,18 +1389,33 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
 
     private func planFromGitHub() {
         guard let repo = ModPreset.repoSlug(from: repoInput) else { return }
+        planFromGitHub(repo: repo)
+    }
+
+    /// Reads a repo's releases and shows the install plan, starting on the
+    /// newest release with an installable file (or the installed one).
+    private func planFromGitHub(repo: String, installedVersion: String? = nil) {
         Task {
             busy = "Reading \(repo) on GitHub…"
             defer { busy = nil }
             do {
-                async let readme = GitHubReleases.readme(repo: repo)
-                let release = try await GitHubReleases.latestRelease(repo: repo)
-                guard let plan = ModReadmePlanner.plan(readme: try await readme, release: release, repo: repo) else {
-                    message = "\(repo) \(release.tagName) has no .zip or .dll to install."
+                async let readmeText = GitHubReleases.readme(repo: repo)
+                var releases = (try? await GitHubReleases.releases(repo: repo)) ?? []
+                if releases.isEmpty { releases = [try await GitHubReleases.latestRelease(repo: repo)] }
+                releases = releases.filter { !ModReadmePlanner.installableAssets($0).isEmpty }
+                let readme = try? await readmeText
+                let start = releases.first { $0.tagName == installedVersion }
+                    ?? releases.first { !$0.prerelease } ?? releases.first
+                guard let release = start,
+                      let plan = ModReadmePlanner.plan(readme: readme, release: release, repo: repo) else {
+                    message = "\(repo) has no release with a .zip or .dll to install."
                     return
                 }
                 showAddSheet = false
-                pendingPlan = PendingPlan(repo: repo, release: release, plan: plan)
+                pendingPlan = PendingPlan(
+                    repo: repo, release: release, plan: plan, releases: releases,
+                    readme: readme, installedVersion: installedVersion
+                )
             } catch {
                 message = error.localizedDescription
             }
@@ -1485,14 +1575,13 @@ struct ModsSectionView: View { // swiftlint:disable:this type_body_length
                     let steamWasRunning = await SteamModLauncher.isSteamRunning()
                     let started = Date()
                     if let modFolder {
-                        // Any mod with its own account copy starts signed in, not as a new player.
+                        // Signed in, not a new player, and with this profile's own game settings.
                         ModAccountPrimer.seedDiscoveredSaves(bottleURL: program.bottle.url)
+                        ModAccountPrimer.switchSettings(to: modFolder, bottleURL: program.bottle.url)
                         SteamModLauncher.ensureLoaderOverride(gameExecutable: program.url, bottle: program.bottle)
                         try await SteamModLauncher.prepare(appId: appId, bottle: program.bottle)
-                        try SteamModLauncher.select(
-                            ModInstaller.mainExecutable(in: modFolder, preferring: program.name),
-                            appId: appId, bottleURL: program.bottle.url
-                        )
+                        let executable = ModInstaller.mainExecutable(in: modFolder, preferring: program.name)
+                        try SteamModLauncher.select(executable, appId: appId, bottleURL: program.bottle.url)
                     } else {
                         try SteamModLauncher.select(nil, appId: appId, bottleURL: program.bottle.url)
                     }

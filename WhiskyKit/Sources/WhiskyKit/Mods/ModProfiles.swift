@@ -102,26 +102,42 @@ public extension ModInstaller {
     /// Where a turned-off mod's plugin files wait, inside the game folder.
     static let disabledFolder = "BepInEx/.betterwhisky-disabled"
 
-    /// Whether a mod has files BepInEx loads as plugins, so it can be turned off on its own.
-    static func canToggle(_ mod: InstalledMod) -> Bool {
-        mod.files.contains { $0.lowercased().hasPrefix("bepinex/plugins/") }
-    }
-
-    /// Whether a mod's plugins are where BepInEx loads them.
-    static func isEnabled(_ mod: InstalledMod, in gameFolder: URL) -> Bool {
-        guard let file = mod.files.first(where: { $0.lowercased().hasPrefix("bepinex/plugins/") }) else {
-            return true
+    /// A mod's own files that a switch moves: everything it installed except
+    /// the loader and folders shared with the profile's other mods.
+    static func switchableFiles(_ mod: InstalledMod) -> [String] {
+        let shared = ["winhttp.dll", "doorstop_config.ini", ".doorstop_version", "changelog.txt"]
+        let sharedFolders = [
+            "bepinex/core/", "bepinex/config/", "bepinex/cache/", "bepinex/interop/", "bepinex/unity-libs/",
+            "bepinex/unhollowed/", "dotnet/", "mono/", "\(disabledFolder.lowercased())/"
+        ]
+        return mod.files.filter { file in
+            let lower = file.lowercased()
+            return !shared.contains(lower) && !sharedFolders.contains(where: lower.hasPrefix)
         }
-        return FileManager.default.fileExists(
-            atPath: gameFolder.appending(path: file).path(percentEncoded: false)
-        )
     }
 
-    /// Moves a mod's plugin files out of `BepInEx/plugins` (off) or back (on).
+    /// Whether a mod has files of its own to turn off, so it can be switched on its own.
+    /// Plugins usually sit in `BepInEx/plugins`, but some mods also ship
+    /// patchers or files at the game root; those move with the switch too.
+    static func canToggle(_ mod: InstalledMod) -> Bool {
+        !switchableFiles(mod).isEmpty
+    }
+
+    /// Whether a mod's files are where the game loads them.
+    static func isEnabled(_ mod: InstalledMod, in gameFolder: URL) -> Bool {
+        let files = switchableFiles(mod)
+        guard !files.isEmpty else { return true }
+        return files.contains { file in
+            guard let url = try? resolve(file, in: gameFolder) else { return false }
+            return FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
+        }
+    }
+
+    /// Moves a mod's own files out of the game's folders (off) or back (on).
     /// Nothing is deleted, and the mod stays recorded either way.
     static func setEnabled(_ enabled: Bool, _ mod: InstalledMod, in gameFolder: URL) throws {
         let fileManager = FileManager.default
-        for relative in mod.files where relative.lowercased().hasPrefix("bepinex/plugins/") {
+        for relative in switchableFiles(mod) {
             let live = try resolve(relative, in: gameFolder)
             let parked = try resolve("\(disabledFolder)/\(relative)", in: gameFolder)
             let (source, destination) = enabled ? (parked, live) : (live, parked)
