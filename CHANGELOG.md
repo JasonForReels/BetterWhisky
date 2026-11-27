@@ -6,6 +6,21 @@ What changed in each BetterWhisky release. Downloads are on the
 BetterWhisky is a fork of [frankea/Whisky](https://github.com/frankea/Whisky). Changes from
 before the fork, up to Whisky 3.10.2, are in [docs/WHISKY-CHANGELOG.md](docs/WHISKY-CHANGELOG.md).
 
+## [1.4.2] - 2026-11-27
+
+### Added
+- **Pick the release and file when adding from GitHub.** The install window lists recent
+  releases, betas included, and every `.zip` and `.dll` in each, so you can take the zip a mod
+  prefers over its `.dll`.
+- **Change Version…** in a GitHub mod's menu in a profile switches it to any other release.
+- Each profile keeps **its own game settings**, put back when you press Play.
+
+### Fixed
+- Mods that put files outside `BepInEx/plugins` now get an on/off switch in their profile.
+- The mod's game settings were reset to the plain game's whenever its account had to be set up
+  again before Play.
+- Updating or reinstalling a mod no longer replaces or removes its BepInEx config files.
+
 ## [1.4.1] - 2026-11-25
 
 ### Added
@@ -106,6 +121,7 @@ The first BetterWhisky release.
 ### Fixed
 - The command line tool looked for bottles in the old Whisky container.
 
+[1.4.2]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.2
 [1.4.1]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.1
 [1.4.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.0
 [1.3.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.3.0
