@@ -26,8 +26,8 @@
 1. Download `BetterWhisky-<version>.dmg` from the [latest release](https://github.com/JasonForReels/BetterWhisky/releases/latest).
    It's signed and notarised by Apple.
 2. Open the DMG and drag **BetterWhisky** into **Applications**, then open it from there.
-3. On first launch, BetterWhisky sets itself up: it installs Rosetta 2 if your Mac doesn't have
-   it and downloads the Wine engine (about 480 MB). This happens once.
+3. On first launch, BetterWhisky sets itself up: it will install Rosetta 2 if your Mac doesn't have
+   it and downloads the Wine engine (about 480 MB). This only happens once.
 
 BetterWhisky updates itself after that. When a new version is out, it offers to install it.
 
@@ -46,7 +46,7 @@ A **bottle** is its own Windows setup on your Mac. Games installed in it share i
 1. Download the Windows installer from the program's site, for example `SteamSetup.exe` from
    [steampowered.com](https://store.steampowered.com/about/).
 2. Open the **Bottles** tab, click your bottle, then click **▶ Run…** in the toolbar and choose
-   the installer. You can also drag the `.exe` onto the BetterWhisky window.
+   the installer. You can also drag the `.exe` app onto the BetterWhisky window.
 3. Follow the installer as you would on Windows.
 
 Installed programs and Steam games appear in the **Library** tab on their own. To keep a program
@@ -56,7 +56,7 @@ handy, pin it: **Bottles** → your bottle → **Pin Program**.
 
 - In the **Library**, click a game, or hover it and click **▶**. Steam games start through
   Steam, so you stay signed in.
-- **Search** finds games, mods and bottles as you type.
+- **Search** allows you to finds games, mods and bottles as you type.
 - Right-click a card for **Mods…**, **Configure Bottle**, or, for a pinned program,
   **Show in Finder** and **Remove Pin**.
 
@@ -209,18 +209,5 @@ by [Isaac Marovitz](https://github.com/IsaacMarovitz). It also relies on:
   [The Other Roles](https://github.com/TheOtherRolesAU/TheOtherRoles) by TheOtherRolesAU
 - [CrossOver](https://www.codeweavers.com/crossover) by CodeWeavers and WineHQ, and D3DMetal by Apple
 
-<table>
-  <tr>
-    <td>
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="./images/cw-dark.png">
-          <img src="./images/cw-light.png" width="500">
-        </picture>
-    </td>
-    <td>
-        Whisky doesn't exist without CrossOver. If you want a fully-supported commercial Wine experience on macOS, check out <a href="https://www.codeweavers.com/crossover">CrossOver</a> from CodeWeavers.
-    </td>
-  </tr>
-</table>
 
 Licensed under the [GNU General Public License v3](LICENSE).
