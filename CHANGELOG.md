@@ -6,6 +6,11 @@ What changed in each BetterWhisky release. Downloads are on the
 BetterWhisky is a fork of [frankea/Whisky](https://github.com/frankea/Whisky). Changes from
 before the fork, up to Whisky 3.10.2, are in [docs/WHISKY-CHANGELOG.md](docs/WHISKY-CHANGELOG.md).
 
+## [1.4.3] - 2026-11-28
+
+### Fixed
+- Switching versions of a mod from GitHub got rid of the switch there
+
 ## [1.4.2] - 2026-11-27
 
 ### Added
@@ -121,6 +126,7 @@ The first BetterWhisky release.
 ### Fixed
 - The command line tool looked for bottles in the old Whisky container.
 
+[1.4.3]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.3
 [1.4.2]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.2
 [1.4.1]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.1
 [1.4.0]: https://github.com/JasonForReels/BetterWhisky/releases/tag/v1.4.0
