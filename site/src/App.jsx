@@ -1,7 +1,7 @@
 import useScrollScenes from './useScrollScenes.js'
 
 const REPO = 'https://github.com/JasonForReels/BetterWhisky'
-const VERSION = '1.4.2'
+const VERSION = '1.4.3'
 const DMG = `${REPO}/releases/download/v${VERSION}/BetterWhisky-${VERSION}.dmg`
 
 const statement =
