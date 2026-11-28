@@ -38,6 +38,32 @@ import Testing
     }
 
     /// A Town of Us profile: BepInEx 6.0.0 and Reactor 2.3.1 among its plugins.
+    @Test func changingAModsVersionKeepsItsOwnPlugin() throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let profile = try makeProfile()
+        let repo = "someone/Mira-NotePad"
+        func install(_ version: PEVersion, tag: String) throws -> InstalledMod {
+            let staged = try stage(["BepInEx/plugins/NotePad.dll": Self.dll(version, tag: tag)])
+            let report = ModCompatibility.check(name: "Mira-NotePad", repo: repo, staged: staged, profile: profile)
+            #expect(!report.skipped.contains("BepInEx/plugins/NotePad.dll"))
+            return try ModInstaller.installStaged(
+                staged, version: tag, name: "Mira-NotePad", repo: repo,
+                rule: ModInstallRule(mode: .extract), gameExecutable: profile.appending(path: "Among Us.exe"),
+                gameFolder: profile, skipping: report.skipped
+            ).mod
+        }
+        _ = try install(PEVersion(1, 4, 6), tag: "v1.4.6")
+        // An older release, then the same one again: both still bring the plugin and its switch.
+        for (version, tag) in [(PEVersion(1, 4, 5), "v1.4.5"), (PEVersion(1, 4, 5), "v1.4.5")] {
+            let mod = try install(version, tag: tag)
+            #expect(mod.files == ["BepInEx/plugins/NotePad.dll"])
+            #expect(ModInstaller.canToggle(mod))
+            #expect(FileManager.default.fileExists(
+                atPath: profile.appending(path: "BepInEx/plugins/NotePad.dll").path(percentEncoded: false)
+            ))
+        }
+    }
+
     func makeProfile() throws -> URL {
         let profile = root.appending(path: "Among Us Mods/Town of Us- Mira/game")
         try write(Self.dll(PEVersion(6, 0, 0)), to: profile.appending(path: "BepInEx/core/BepInEx.Core.dll"))

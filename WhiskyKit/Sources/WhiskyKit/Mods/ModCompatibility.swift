@@ -141,7 +141,12 @@ public enum ModCompatibility {
         checkConflicts(name: name, repo: repo, with: others, presets: presets, into: &report)
         checkRoleMods(name: name, repo: repo, with: others, into: &report)
         checkLoader(name: name, paths: paths, staged: staged, profile: profile, into: &report)
-        checkPlugins(name: name, paths: paths, staged: staged, profile: profile, owners: others, into: &report)
+        let replaced = Set(present.filter { $0.repo.lowercased() == repo.lowercased() }
+            .flatMap(\.files).map { ($0 as NSString).lastPathComponent.lowercased() })
+        checkPlugins(
+            name: name, paths: paths, staged: staged, profile: profile, owners: others,
+            replacing: replaced, into: &report
+        )
         checkOverwrites(name: name, paths: paths, skipping: report.skipped, owners: others, into: &report)
 
         if let required = requiredGameVersion,
@@ -231,9 +236,9 @@ public enum ModCompatibility {
     /// the newer, unless the versions differ in a way that breaks one of them.
     static func checkPlugins( // swiftlint:disable:this function_parameter_count
         name: String, paths: [String], staged: StagedMod, profile: URL, owners: [InstalledMod],
-        into report: inout ModCompatibilityReport
+        replacing replaced: Set<String> = [], into report: inout ModCompatibilityReport
     ) {
-        let existing = pluginFiles(in: profile)
+        let existing = pluginFiles(in: profile).filter { !replaced.contains($0.key) }
         for path in paths where path.lowercased().hasPrefix("bepinex/plugins/") && path.lowercased().hasSuffix(".dll") {
             let fileName = (path as NSString).lastPathComponent
             guard let current = existing[fileName.lowercased()] else { continue }
